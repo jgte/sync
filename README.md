@@ -1,4 +1,4 @@
 bash
 ====
 
-Nice bash utilities.
+Some nice bash utilities. Or so I say.
