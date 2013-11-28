@@ -110,13 +110,15 @@ fi
 
 # ------------- dirs -------------
 
-if [[ ! "${ARGS//--remote-dir=.*/}" == "$ARGS" ]]
+if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "$ADDITIONAL_FLAGS" ]]
 then
-    for i in $ARGS
+    for i in $ADDITIONAL_FLAGS
     do
-        if [[ ! "${i//--remote-dir=.*/}" == "$ARGS" ]]
+        if [[ ! "${i//--remote-dir=/}" == "$i" ]]
         then
             DIR_REMOTE=${i/--remote-dir=/}
+            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR_REMOTE/}"
+            ARGS="$ARGS --remote-dir=$DIR_REMOTE"
             break
         fi
     done

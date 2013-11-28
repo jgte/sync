@@ -91,6 +91,22 @@ else
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any arguments file."
 fi
 
+# ------------- dirs -------------
+
+if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "$ADDITIONAL_FLAGS" ]]
+then
+    for i in $ADDITIONAL_FLAGS
+    do
+        if [[ ! "${i//--remote-dir=/}" == "$i" ]]
+        then
+            DIR=${i/--remote-dir=/}
+            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR/}"
+            ARGS="$ARGS --remote-dir=$DIR"
+            break
+        fi
+    done
+fi
+
 # ------------- exclude file -------------
 
 if [ -e "$LOCAL/rsync.exclude" ]
