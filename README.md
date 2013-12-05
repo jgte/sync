@@ -1,4 +1,4 @@
-bash
+Sync utilities
 ====
 
 Introduction
