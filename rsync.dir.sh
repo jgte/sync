@@ -86,7 +86,7 @@ then
             ARGS="$ARGS $i"
         fi
     done
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $LOCAL/rsync.arguments"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $LOCAL/rsync.arguments: `cat $LOCAL/rsync.arguments`"
 else
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any arguments file."
 fi
