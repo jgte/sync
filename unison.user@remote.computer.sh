@@ -24,22 +24,37 @@
 LOCAL=$(cd $(dirname $0); pwd)
 
 #default flags
-DEFAULT_FLAGS=(-auto -times -dontchmod -perms 0)
-DEFAULT_FLAGS+=(-ignore 'Name .DS_Store')
-DEFAULT_FLAGS+=(-ignore 'Name ._*')
-DEFAULT_FLAGS+=(-ignore 'Path .Trash*')
-DEFAULT_FLAGS+=(-ignore 'Name .SyncArchive')
-DEFAULT_FLAGS+=(-ignore 'Name .SyncID')
-DEFAULT_FLAGS+=(-ignore 'Name .SyncIgnore')
-DEFAULT_FLAGS+=(-ignore 'Name .dropbox*')
-DEFAULT_FLAGS+=(-ignore 'Path .dropbox*')
-DEFAULT_FLAGS+=(-ignore 'Name .unison*')
-DEFAULT_FLAGS+=(-ignore 'Path .unison*')
-DEFAULT_FLAGS+=(-ignore 'Name Thumbs.db')
-DEFAULT_FLAGS+=(-ignore 'Name *~')
-DEFAULT_FLAGS+=(-ignore 'Name *.!sync')
+DEFAULT_FLAGS=(-auto)
+DEFAULT_FLAGS+=(-times)
+DEFAULT_FLAGS+=(-fastcheck true)
+DEFAULT_FLAGS+=(-perms 0)
+DEFAULT_FLAGS+=(-dontchmod)
+DEFAULT_FLAGS+=(-prefer newer)
 
-ADDITIONAL_FLAGS=($@)
+IGNORE_FLAGS=(-ignore 'Name .DS_Store')
+IGNORE_FLAGS+=(-ignore 'Name ._*')
+IGNORE_FLAGS+=(-ignore 'Name *.o')
+IGNORE_FLAGS+=(-ignore 'Name *.a')
+IGNORE_FLAGS+=(-ignore 'Name *.exe')
+IGNORE_FLAGS+=(-ignore 'Name .swo')
+IGNORE_FLAGS+=(-ignore 'Name .swp')
+IGNORE_FLAGS+=(-ignore 'Name screenlog.*')
+IGNORE_FLAGS+=(-ignore 'Name .gmt*')
+IGNORE_FLAGS+=(-ignore 'Path .Trash*')
+IGNORE_FLAGS+=(-ignore 'Path .sync')
+IGNORE_FLAGS+=(-ignore 'Name .SyncArchive')
+IGNORE_FLAGS+=(-ignore 'Name .SyncID')
+IGNORE_FLAGS+=(-ignore 'Name .SyncIgnore')
+IGNORE_FLAGS+=(-ignore 'Name .dropbox*')
+IGNORE_FLAGS+=(-ignore 'Path .dropbox*')
+IGNORE_FLAGS+=(-ignore 'Name .unison*')
+IGNORE_FLAGS+=(-ignore 'Path .unison')
+IGNORE_FLAGS+=(-ignore 'Name .git')
+IGNORE_FLAGS+=(-ignore 'Name .svn')
+IGNORE_FLAGS+=(-ignore 'Name Thumbs.db')
+IGNORE_FLAGS+=(-ignore 'Name Icon')
+IGNORE_FLAGS+=(-ignore 'Name *~')
+IGNORE_FLAGS+=(-ignore 'Name *.!sync')
 
 # ------------- remote computer name -------------
 
@@ -60,12 +75,6 @@ else
     #if there's a user, then remove it form the computer name
     COMPUTER_REMOTE=${COMPUTER_REMOTE#*@}
 fi
-
-# ------------- dirs -------------
-
-#editing the remote dir
-DIR_REMOTE=${LOCAL/\/home\/$USER\//\/home\/$USER_REMOTE\/}
-DIR_REMOTE=${LOCAL/\/Users\/$USER\//\/Users\/$USER_REMOTE\/}
 
 # ------------- keyfile -------------
 
@@ -98,25 +107,47 @@ fi
 
 if [ -e "$LOCAL/unison.arguments" ]
 then
-    if [ `cat $LOCAL/unison.arguments | wc -l` -gt 1 ]
-    then
-        echo "ERROR: file $LOCAL/unison.arguments cannot have more than one line."
-        exit 3
-    fi
-    for i in `cat $LOCAL/unison.arguments`
+    while read i
     do
-        ADDITIONAL_FLAGS+=($i)
-    done
+        FILE_FLAGS+=($i)
+    done < $LOCAL/unison.arguments
     echo "Using arguments file $LOCAL/unison.arguments"
 else
     echo "Not using any arguments file."
 fi
+
+# ------------- more arguments in the command line -------------
+
+ADDITIONAL_FLAGS="$@"
+
+# ------------- dirs -------------
+
+if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "${ADDITIONAL_FLAGS}" ]]
+then
+    for i in $ADDITIONAL_FLAGS
+    do
+        if [[ ! "${i//--remote-dir=/}" == "$i" ]]
+        then
+            DIR_REMOTE="${i/--remote-dir=/}"
+            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR_REMOTE/}"
+            break
+        fi
+    done
+else
+    #editing the remote dir
+    DIR_REMOTE="${LOCAL/\/home\/$USER\//\/home\/$USER_REMOTE\/}"
+    DIR_REMOTE="${LOCAL/"/Users/$USER/"/"/Users/$USER_REMOTE/"}"
+fi
+
 # ------------- singularities -------------
 
 case "`hostname`" in
-    "tud14231" )
+    "tud14231"|"imac")
         #inverse translation of "jgte-mac.no-ip.org"
-        DIR_REMOTE=${DIR_REMOTE/\/Users\//\/home\/}
+        [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/Users\//\/home\/}"
+    ;;
+    "srv227" )
+        [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\/nfs\//\/home\/}"
     ;;
     * )
         #do nothing
@@ -124,27 +155,57 @@ case "`hostname`" in
 esac
 
 case "$COMPUTER_REMOTE" in
-    "portable" )
-        #portable is always at PORTABLE_MOUNT_POINT
-        PORTABLE_MOUNT_POINT=/media/portable/portable
-        DIR_REMOTE=$PORTABLE_MOUNT_POINT/${LOCAL//\/home\//}
-        #portable is always connected locally
-        USER_REMOTE=$USER
-        COMPUTER_REMOTE=localhost
-    ;;
-    "jgte-mac.no-ip.org" )
+    "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029" )
         #inverse translation of "tud14231"
-        DIR_REMOTE=${DIR_REMOTE/\/home\//\/Users\/}
+        [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\//\/Users\/}"
         #adding non-default location of unison because of brew
         DEFAULT_FLAGS+=(-servercmd /usr/local/bin/unison)
     ;;
     "linux-bastion.tudelft.nl" )
-      DIR_REMOTE=${DIR_REMOTE/\/home\//\/home\/nfs\/}
+        [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\//\/home\/nfs\/}"
     ;;
     * )
         #do nothing
     ;;
 esac
+
+
+# ------------- remote location -------------
+
+REMOTE="ssh://$USER_REMOTE@$COMPUTER_REMOTE/$DIR_REMOTE"
+
+# ------------- force flags -------------
+
+if [[ ! "${ADDITIONAL_FLAGS/-force-here/}" == "$ADDITIONAL_FLAGS" ]]; then
+    FORCELOCAL_FLAGS="-force $LOCAL"
+      FORCEDIR_FLAGS=
+    ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-force-here/}"
+elif [[ ! "${ADDITIONAL_FLAGS/-force-there/}" == "$ADDITIONAL_FLAGS" ]]; then
+    FORCELOCAL_FLAGS=
+      FORCEDIR_FLAGS="-force $REMOTE"
+    ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-force-there/}"
+else
+    FORCELOCAL_FLAGS=
+      FORCEDIR_FLAGS=
+fi
+
+# ------------- no deletion flags -------------
+
+if [[ ! "${ADDITIONAL_FLAGS/--nodeletion-here/}" == "$ADDITIONAL_FLAGS" ]]; then
+    NODELETIONLOCAL_FLAGS="-nodeletion $LOCAL"
+      NODELETIONDIR_FLAGS=
+    ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-nodeletion-here/}"
+elif [[ ! "${ADDITIONAL_FLAGS/-nodeletion-there/}" == "$@" ]]; then
+    NODELETIONLOCAL_FLAGS=
+      NODELETIONDIR_FLAGS="-nodeletion $REMOTE"
+    ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-nodeletion-there/}"
+else
+    NODELETIONLOCAL_FLAGS=
+      NODELETIONDIR_FLAGS=
+fi
+
+#need to fix freaky blank messing up the unison call below
+ADDITIONAL_FLAGS="$(echo $ADDITIONAL_FLAGS |  sed 's/ *$//' | sed 's/^ *//')"
 
 # ------------- pinging remote host -------------
 
@@ -156,11 +217,23 @@ esac
 
 # ------------- feedback -------------
 
-echo "Additional flags are  ${ADDITIONAL_FLAGS:+"${ADDITIONAL_FLAGS[@]}"}"
-echo "Remote computer is $COMPUTER_REMOTE; Remote user is $USER_REMOTE; local user is $USER"
-echo "Remote dir is $DIR_REMOTE; local dir is $LOCAL"
-echo "Exclude commands are ${EXCLUDE:+"${EXCLUDE[@]}"}"
+echo "====================================================================="
+echo "Default flags        : ${DEFAULT_FLAGS[@]}"
+echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
+echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
+echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
+echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
+echo "ssh flags            : -sshargs $SSH_ARGS"
+echo "remote is            : $REMOTE"
+echo "local is             : $LOCAL"
+echo "====================================================================="
 
 # ------------- syncing -------------
 
-unison "$LOCAL" "ssh://$USER_REMOTE@$COMPUTER_REMOTE/$DIR_REMOTE" -sshargs "$SSH_ARGS" "${DEFAULT_FLAGS[@]}" ${EXCLUDE:+"${EXCLUDE[@]}"} ${ADDITIONAL_FLAGS:+"${ADDITIONAL_FLAGS[@]}"}
+unison \
+    ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
+    ${EXCLUDE:+"${EXCLUDE[@]}"} \
+    ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
+    $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
+    -sshargs "$SSH_ARGS" \
+    "$LOCAL" "$REMOTE" \
