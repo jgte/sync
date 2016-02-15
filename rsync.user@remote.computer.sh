@@ -78,11 +78,15 @@ USER_REMOTE=${COMPUTER_REMOTE%@*}
 if [ "$USER_REMOTE" == "$COMPUTER_REMOTE" ]
 then
     #if the user is the same of the computer, then no user was given
-    USER_REMOTE=$USER
+    USER_REMOTE=${USER:-unknown}
 else
     #if there's a user, then remove it form the computer name
     COMPUTER_REMOTE=${COMPUTER_REMOTE#*@}
 fi
+# ------------- local username -------------
+
+#this is useful when run from crontab and the USER_REMOTE is set
+USER=${USER:-$USER_REMOTE}
 
 # ------------- argument file -------------
 
@@ -103,7 +107,7 @@ then
             ARGS="$ARGS $i"
         fi
     done
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $LOCAL/rsync.arguments"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $LOCAL/rsync.arguments: `cat $LOCAL/rsync.arguments`"
 else
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any arguments file."
 fi
@@ -116,7 +120,7 @@ then
     do
         if [[ ! "${i//--remote-dir=/}" == "$i" ]]
         then
-            DIR_REMOTE=${i/--remote-dir=/}
+            DIR_REMOTE="${i/--remote-dir=/}"
             ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR_REMOTE/}"
             ARGS="$ARGS --remote-dir=$DIR_REMOTE"
             break
@@ -124,22 +128,22 @@ then
     done
 else
     #editing the remote dir
-    DIR_REMOTE=${LOCAL/\/home\/$USER\//\/home\/$USER_REMOTE\/}
-    DIR_REMOTE=${LOCAL/\/Users\/$USER\//\/Users\/$USER_REMOTE\/}
+    DIR_REMOTE="${LOCAL/\/home\/$USER\//\/home\/$USER_REMOTE\/}"
+    DIR_REMOTE="${LOCAL/\/Users\/$USER\//\/Users\/$USER_REMOTE\/}"
 fi
 
 # ------------- keyfile -------------
 
 SSH_KEY_FILE=$HOME/.ssh/$USER_REMOTE@${COMPUTER_REMOTE%%.*}
-echo "Looking for key file $SSH_KEY_FILE"
+[[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Looking for key file $SSH_KEY_FILE"
 if [ ! -e "$SSH_KEY_FILE" ]
 then
     SSH_KEY_FILE=none
     RSH=
-    echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
 else
     RSH="ssh -i $SSH_KEY_FILE"
-    echo "Using keyfile $SSH_KEY_FILE"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using keyfile $SSH_KEY_FILE"
 fi
 
 # ------------- exclude file -------------
@@ -176,9 +180,12 @@ fi
 # ------------- singularities -------------
 
 case "`hostname`" in
-    "tud14231" )
+    "tud14231"|"imac")
         #inverse translation of "jgte-mac.no-ip.org"
-        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE=${DIR_REMOTE/\/Users\//\/home\/}
+        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/Users\//\/home\/}"
+    ;;
+    "srv227" )
+        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\/nfs\//\/home\/}"
     ;;
     * )
         #do nothing
@@ -186,20 +193,12 @@ case "`hostname`" in
 esac
 
 case "$COMPUTER_REMOTE" in
-    "portable" )
-        #portable is always at PORTABLE_MOUNT_POINT
-        PORTABLE_MOUNT_POINT=/media/portable/portable
-        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE=$PORTABLE_MOUNT_POINT/${LOCAL//\/home\//}
-        #portable is always connected locally
-        USER_REMOTE=$USER
-        COMPUTER_REMOTE=localhost
-    ;;
-    "jgte-mac.no-ip.org" )
+    "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029" )
         #inverse translation of "tud14231"
-        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE=${DIR_REMOTE/\/home\//\/Users\/}
+        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\//\/Users\/}"
     ;;
     "linux-bastion.tudelft.nl" )
-      [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE=${DIR_REMOTE/\/home\//\/home\/nfs\/}
+        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\//\/home\/nfs\/}"
     ;;
     * )
         #do nothing
