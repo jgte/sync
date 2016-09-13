@@ -35,21 +35,36 @@ LOG=${LOG// /_}
 
 #default flags
 DEFAULT_FLAGS=" --recursive --update --times --omit-dir-times --links --sparse  --fuzzy --partial --no-perms --no-group --chmod=ugo=rwX --modify-window=1"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=.DS_Store"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=._*"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=.Trash*"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=.SyncArchive"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=.SyncID"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=.SyncIgnore"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=.dropbox*"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=.unison*"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=$LOG"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=Thumbs.db"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=*~"
-DEFAULT_FLAGS="$DEFAULT_FLAGS --exclude=*.!sync"
+DEFAULT_FLAGS+=" --exclude=.DS_Store"
+DEFAULT_FLAGS+=" --exclude=._*"
+DEFAULT_FLAGS+=" --exclude=*.o"
+DEFAULT_FLAGS+=" --exclude=*.a"
+DEFAULT_FLAGS+=" --exclude=*.exe"
+DEFAULT_FLAGS+=" --exclude=.swo"
+DEFAULT_FLAGS+=" --exclude=.swp"
+DEFAULT_FLAGS+=" --exclude=screenlog.*"
+DEFAULT_FLAGS+=" --exclude=.gmt*"
+DEFAULT_FLAGS+=" --exclude=.Trash*"
+DEFAULT_FLAGS+=" --exclude=lost+found"
+DEFAULT_FLAGS+=" --exclude=.Spotlight*"
+DEFAULT_FLAGS+=" --exclude=.fseventsd*"
+DEFAULT_FLAGS+=" --exclude=.DocumentRevisions*"
+DEFAULT_FLAGS+=" --exclude=.sync"
+DEFAULT_FLAGS+=" --exclude=.SyncArchive"
+DEFAULT_FLAGS+=" --exclude=.SyncID"
+DEFAULT_FLAGS+=" --exclude=.SyncIgnore"
+DEFAULT_FLAGS+=" --exclude=.dropbox*"
+DEFAULT_FLAGS+=" --exclude=.unison*"
+DEFAULT_FLAGS+=" --exclude=$LOG"
+DEFAULT_FLAGS+=" --exclude=.git"
+DEFAULT_FLAGS+=" --exclude=.svn"
+DEFAULT_FLAGS+=" --exclude=Thumbs.db"
+DEFAULT_FLAGS+=" --exclude=Icon"
+DEFAULT_FLAGS+=" --exclude=*~"
+DEFAULT_FLAGS+=" --exclude=*.!sync"
 
 #script-specific arguments
-SCRIPT_ARGS="--not-local2remote --not-remote2local --no-confirmation --no-feedback"
+SCRIPT_ARGS="--not-dir2local --not-local2dir --not-local2remote --not-remote2local --no-confirmation --no-feedback"
 
 # ------------- given arguments -------------
 
@@ -67,8 +82,8 @@ ADDITIONAL_FLAGS=${ADDITIONAL_FLAGS//--remote-dir=.*/}
 # ------------- remote computer name -------------
 
 COMPUTER_REMOTE=`basename $0`
-COMPUTER_REMOTE=${COMPUTER_REMOTE%.sh}
-COMPUTER_REMOTE=${COMPUTER_REMOTE#rsync.}
+COMPUTER_REMOTE=${COMPUTER_REMOTE%.sh*}
+COMPUTER_REMOTE=${COMPUTER_REMOTE#*rsync.}
 
 # ------------- remote username -------------
 
@@ -127,9 +142,9 @@ then
         fi
     done
 else
-    #editing the remote dir
-    DIR_REMOTE="${LOCAL/\/home\/$USER\//\/home\/$USER_REMOTE\/}"
-    DIR_REMOTE="${LOCAL/\/Users\/$USER\//\/Users\/$USER_REMOTE\/}"
+    #editing the remote dir (no need to escape the / character of the replacing string, apparently)
+    DIR_REMOTE="${LOCAL/\/home\/$USER\///home/$USER_REMOTE/}"
+    DIR_REMOTE="${LOCAL/\/Users\/$USER\///Users/$USER_REMOTE/}"
 fi
 
 # ------------- keyfile -------------
@@ -179,31 +194,44 @@ fi
 
 # ------------- singularities -------------
 
-case "`hostname`" in
-    "tud14231"|"imac")
-        #inverse translation of "jgte-mac.no-ip.org"
-        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/Users\//\/home\/}"
-    ;;
-    "srv227" )
-        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\/nfs\//\/home\/}"
-    ;;
-    * )
-        #do nothing
-    ;;
-esac
+if [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]]
+then
+    # translation origin
+    case "`hostname`" in
+        "tud14231"|"imac"|"csr-875717.csr.utexas.edu")
+            #inverse translation of Darwin homes
+            FROM="/Users/$USER"
+        ;;
+        "srv227" )
+            FROM="/home/nfs/$USER"
+        ;;
+        "login1"|"login2"|"login3")
+            FROM="/home1/00767/$USER"
+        ;;
+        * )
+            FROM="$HOME"
+        ;;
+    esac
+    # translation destiny
+    case "$COMPUTER_REMOTE" in
+        "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029"|"csr-875717.csr.utexas.edu" )
+            #translation of Darwin homes
+            TO="/Users/$USER_REMOTE"
+        ;;
+        "linux-bastion.tudelft.nl" )
+            TO="/home/nfs/$USER_REMOTE"
+        ;;
+        "login1.ls5.tacc.utexas.edu"|"login2.ls5.tacc.utexas.edu"|"login3.ls5.tacc.utexas.edu")
+            TO="/home1/00767/$USER_REMOTE"
+        ;;
+        * )
+            TO="/home/$USER_REMOTE"
+        ;;
+    esac
+    #translate
+    DIR_REMOTE="${DIR_REMOTE/$FROM/$TO}"
 
-case "$COMPUTER_REMOTE" in
-    "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029" )
-        #inverse translation of "tud14231"
-        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\//\/Users\/}"
-    ;;
-    "linux-bastion.tudelft.nl" )
-        [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\//\/home\/nfs\/}"
-    ;;
-    * )
-        #do nothing
-    ;;
-esac
+fi
 
 
 # # ------------- pinging remote host -------------
@@ -242,7 +270,7 @@ fi
 
 # ------------- local to remote -------------
 
-if [[ "${ARGS//--not-local2remote/}" == "$ARGS" ]]
+if [[ "${ARGS//--not-local2remote/}" == "$ARGS" ]] && [[ "${ARGS//--not-local2dir/}" == "$ARGS" ]]
 then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching local -> remote"
     if [ -z "$RSH" ]
@@ -259,7 +287,7 @@ fi
 
 # ------------- remote to local -------------
 
-if [[ "${ARGS//--not-remote2local/}" == "$ARGS" ]]
+if [[ "${ARGS//--not-remote2local/}" == "$ARGS" ]] && [[ "${ARGS//--not-dir2local/}" == "$ARGS" ]]
 then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching remote -> local"
     if [ -z "$RSH" ]

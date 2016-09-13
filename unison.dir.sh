@@ -15,6 +15,10 @@
 #
 # https://github.com/jgte/bash
 
+function file_ends_with_newline() {
+    [[ "$(tail -c1 "$1")" == "" ]]
+}
+
 # ------------- Finding where I am -------------
 
 LOCAL=$(cd $(dirname $0); pwd)
@@ -24,6 +28,7 @@ DEFAULT_FLAGS=(-auto)
 DEFAULT_FLAGS+=(-times)
 DEFAULT_FLAGS+=(-fastcheck true)
 DEFAULT_FLAGS+=(-perms 0)
+DEFAULT_FLAGS+=(-rsrc false)
 DEFAULT_FLAGS+=(-dontchmod)
 DEFAULT_FLAGS+=(-prefer newer)
 
@@ -37,6 +42,10 @@ IGNORE_FLAGS+=(-ignore 'Name .swo')
 IGNORE_FLAGS+=(-ignore 'Name .swp')
 IGNORE_FLAGS+=(-ignore 'Name screenlog.*')
 IGNORE_FLAGS+=(-ignore 'Name .gmt*')
+IGNORE_FLAGS+=(-ignore 'Path lost+found')
+IGNORE_FLAGS+=(-ignore 'Path .Spotlight*')
+IGNORE_FLAGS+=(-ignore 'Path .fseventsd*')
+IGNORE_FLAGS+=(-ignore 'Path .DocumentRevisions*')
 IGNORE_FLAGS+=(-ignore 'Path .Trash*')
 IGNORE_FLAGS+=(-ignore 'Path .sync')
 IGNORE_FLAGS+=(-ignore 'Name .SyncArchive')
@@ -52,6 +61,9 @@ IGNORE_FLAGS+=(-ignore 'Name Thumbs.db')
 IGNORE_FLAGS+=(-ignore 'Name Icon')
 IGNORE_FLAGS+=(-ignore 'Name *~')
 IGNORE_FLAGS+=(-ignore 'Name *.!sync')
+IGNORE_FLAGS+=(-ignore 'Name .journal*')
+IGNORE_FLAGS+=(-ignore 'Path .TemporaryItems')
+IGNORE_FLAGS+=(-ignore 'Name .HFS+*')
 
 # ------------- dir -------------
 
@@ -65,6 +77,10 @@ DIR=$HOME/$DIR
 
 if [ -e "$LOCAL/unison.ignore" ]
 then
+    file_ends_with_newline "$LOCAL/unison.ignore" || {
+        echo "ERROR: file $LOCAL/unison.ignore needs to end with a newline."
+        exit 3
+    }
     while read i
     do
         EXCLUDE+=(-ignore "$i")
@@ -74,8 +90,26 @@ else
     echo "Not using any exclude file."
 fi
 
+# ------------- include file -------------
+
+if [ -e "$LOCAL/unison.ignorenot" ]
+then
+    file_ends_with_newline "$LOCAL/unison.ignorenot" || {
+        echo "ERROR: file $LOCAL/unison.ignorenot needs to end with a newline."
+        exit 3
+    }
+    while read i
+    do
+        INCLUDE+=(-ignorenot "$i")
+    done < "$LOCAL/unison.ignorenot"
+    echo "Using include file $LOCAL/unison.ignorenot: ${INCLUDE[@]}"
+else
+    echo "Not using any include file."
+fi
+
 # ------------- argument file -------------
 
+FILE_FLAGS=
 if [ -e "$LOCAL/unison.arguments" ]
 then
     while read i
@@ -89,7 +123,29 @@ fi
 
 # ------------- more arguments in the command line -------------
 
-ADDITIONAL_FLAGS="$@"
+ADDITIONAL_FLAGS="$@ ${FILE_FLAGS[@]}"
+
+# ------------- dirs -------------
+
+if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "${ADDITIONAL_FLAGS}" ]]
+then
+    for i in $ADDITIONAL_FLAGS
+    do
+        echo $i
+        if [[ ! "${i//--remote-dir=/}" == "$i" ]]
+        then
+            DIR="${i/--remote-dir=/}"
+            echo $DIR
+            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR/}"
+            break
+        fi
+    done
+else
+    #editing the remote dir
+    DIR="${DIR/\/home\/$USER\//\/home\/$USER\/}"
+    DIR="${DIR/"/Users/$USER/"/"/Users/$USER/"}"
+fi
+
 
 # ------------- force flags -------------
 
@@ -134,7 +190,7 @@ then
     fi
 
     #get dir list
-    [ "$(basename $DIR)" == "dir_list" ]  && DIR_LIST=$(cat $LOCAL/unison.dir_list)
+    [ "$(basename $DIR)" == "dir_list" ]  && DIR_LIST=$(cat $LOCAL/unison.dir_list | grep -v ^#)
     [ "$(basename $DIR)" == "recursive" ] && DIR_LIST=$(find $LOCAL -type d -maxdepth 1)
 
     #loop over list of directories
@@ -158,16 +214,17 @@ then
         echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
         echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
         echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
-        echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
+        echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
+        # echo "File flags           : ${FILE_FLsAGS:+"${FILE_FLAGS[@]}"}"
         echo "dir is               : $HOME/$i"
         echo "local is             : $LOCAL/$i"
         echo "====================================================================="
         unison \
             ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
             ${EXCLUDE:+"${EXCLUDE[@]}"} \
-            ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
+            ${INCLUDE:+"${INCLUDE[@]}"} \
             $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
-            "$HOME/$i" "$LOCAL/$i"
+            "$HOME/$i" "$LOCAL/$i"  || exit $?
 
     done
 else
@@ -183,14 +240,15 @@ else
     echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
     echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
     echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
-    echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
+    echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
+    # echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
     echo "dir is               : $DIR"
     echo "local is             : $LOCAL"
     echo "====================================================================="
     unison \
         ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
         ${EXCLUDE:+"${EXCLUDE[@]}"} \
-        ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
+        ${INCLUDE:+"${INCLUDE[@]}"} \
         $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
         "$DIR" "$LOCAL"
 

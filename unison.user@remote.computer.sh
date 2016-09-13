@@ -41,6 +41,10 @@ IGNORE_FLAGS+=(-ignore 'Name .swp')
 IGNORE_FLAGS+=(-ignore 'Name screenlog.*')
 IGNORE_FLAGS+=(-ignore 'Name .gmt*')
 IGNORE_FLAGS+=(-ignore 'Path .Trash*')
+IGNORE_FLAGS+=(-ignore 'Path lost+found')
+IGNORE_FLAGS+=(-ignore 'Path .Spotlight*')
+IGNORE_FLAGS+=(-ignore 'Path .fseventsd*')
+IGNORE_FLAGS+=(-ignore 'Path .DocumentRevisions*')
 IGNORE_FLAGS+=(-ignore 'Path .sync')
 IGNORE_FLAGS+=(-ignore 'Name .SyncArchive')
 IGNORE_FLAGS+=(-ignore 'Name .SyncID')
@@ -101,6 +105,19 @@ then
     echo "Using exclude file $LOCAL/unison.ignore: ${EXCLUDE[@]}"
 else
     echo "Not using any exclude file."
+fi
+
+# ------------- include file -------------
+
+if [ -e "$LOCAL/unison.ignorenot" ]
+then
+    while read i
+    do
+        INCLUDE+=(-ignorenot "$i")
+    done < "$LOCAL/unison.ignorenot"
+    echo "Using include file $LOCAL/unison.ignorenot: ${INCLUDE[@]}"
+else
+    echo "Not using any include file."
 fi
 
 # ------------- argument file -------------
@@ -222,6 +239,7 @@ echo "Default flags        : ${DEFAULT_FLAGS[@]}"
 echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
 echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
 echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
+echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
 echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
 echo "ssh flags            : -sshargs $SSH_ARGS"
 echo "remote is            : $REMOTE"
@@ -232,6 +250,7 @@ echo "====================================================================="
 
 unison \
     ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
+    ${INCLUDE:+"${INCLUDE[@]}"} \
     ${EXCLUDE:+"${EXCLUDE[@]}"} \
     ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
     $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
