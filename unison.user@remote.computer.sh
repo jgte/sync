@@ -158,34 +158,46 @@ fi
 
 # ------------- singularities -------------
 
-case "`hostname`" in
-    "tud14231"|"imac")
-        #inverse translation of "jgte-mac.no-ip.org"
-        [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/Users\//\/home\/}"
-    ;;
-    "srv227" )
-        [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\/nfs\//\/home\/}"
-    ;;
-    * )
-        #do nothing
-    ;;
-esac
+if [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]]
+then
+    # translation origin
+    case "`hostname`" in
+        "tud14231"|"imac"|"csr-875717.csr.utexas.edu")
+            #inverse translation of Darwin homes
+            FROM="/Users/$USER"
+        ;;
+        "srv227" )
+            FROM="/home/nfs/$USER"
+        ;;
+        "login1"|"login2"|"login3")
+            FROM="/home1/00767/$USER"
+        ;;
+        * )
+            FROM="$HOME"
+        ;;
+    esac
+    # translation destiny
+    case "$COMPUTER_REMOTE" in
+        "jgte-mac.no-ip.org"|"csr-875717.csr.utexas.edu" )
+            #translation of Darwin homes
+            TO="/Users/$USER_REMOTE"
+            #adding non-default location of unison because of brew
+            DEFAULT_FLAGS+=(-servercmd /usr/local/bin/unison)
+        ;;
+        "linux-bastion.tudelft.nl" )
+            TO="/home/nfs/$USER_REMOTE"
+        ;;
+        "login1.ls5.tacc.utexas.edu"|"login2.ls5.tacc.utexas.edu"|"login3.ls5.tacc.utexas.edu")
+            TO="/home1/00767/$USER_REMOTE"
+        ;;
+        * )
+            TO="/home/$USER_REMOTE"
+        ;;
+    esac
+    #translate
+    DIR_REMOTE="${DIR_REMOTE/$FROM/$TO}"
 
-case "$COMPUTER_REMOTE" in
-    "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029" )
-        #inverse translation of "tud14231"
-        [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\//\/Users\/}"
-        #adding non-default location of unison because of brew
-        DEFAULT_FLAGS+=(-servercmd /usr/local/bin/unison)
-    ;;
-    "linux-bastion.tudelft.nl" )
-        [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]] && DIR_REMOTE="${DIR_REMOTE/\/home\//\/home\/nfs\/}"
-    ;;
-    * )
-        #do nothing
-    ;;
-esac
-
+fi
 
 # ------------- remote location -------------
 
