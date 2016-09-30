@@ -24,6 +24,12 @@
 #
 # https://github.com/jgte/bash
 
+function machine_is
+{
+  OS=`uname -v`
+  [[ ! "${OS//$1/}" == "$OS" ]] && return 0 || return 1
+}
+
 # ------------- dynamic parameters -------------
 
 LOCAL=$(cd $(dirname $0); pwd)
@@ -64,7 +70,7 @@ DEFAULT_FLAGS+=" --exclude=*~"
 DEFAULT_FLAGS+=" --exclude=*.!sync"
 
 #script-specific arguments
-SCRIPT_ARGS="--not-dir2local --not-local2dir --not-local2remote --not-remote2local --no-confirmation --no-feedback"
+SCRIPT_ARGS="--not-dir2local --not-local2dir --not-local2remote --not-remote2local --no-confirmation --no-feedback --backup-deleted"
 
 # ------------- given arguments -------------
 
@@ -135,7 +141,8 @@ then
     do
         if [[ ! "${i//--remote-dir=/}" == "$i" ]]
         then
-            DIR_REMOTE="${i/--remote-dir=/}"
+            #xargs trimmes the DIR_REMOTE value
+            DIR_REMOTE="$(echo ${i/--remote-dir=/} | xargs)"
             ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR_REMOTE/}"
             ARGS="$ARGS --remote-dir=$DIR_REMOTE"
             break
@@ -145,6 +152,32 @@ else
     #editing the remote dir (no need to escape the / character of the replacing string, apparently)
     DIR_REMOTE="${LOCAL/\/home\/$USER\///home/$USER_REMOTE/}"
     DIR_REMOTE="${LOCAL/\/Users\/$USER\///Users/$USER_REMOTE/}"
+fi
+
+# # ------------- pre-run comman -------------
+
+if [[ ! "${ADDITIONAL_FLAGS//--pre-run=/}" == "$ARGS" ]]
+then
+    for i in "$ADDITIONAL_FLAGS"
+    do
+        if [[ ! "${i//--pre-run=/}" == "$i" ]]
+        then
+            if [[ "${i//\'/}" == "$i" ]]
+            then
+                echo "ERROR: the command --pre-run='command' must use single quotes explicitly."
+                exit 3
+            fi
+            #xargs trimmes the PRE_RUN_COM value
+            PRE_RUN_COM="$(echo ${i/--pre-run=/} | xargs)"
+            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--pre-run=\'$PRE_RUN_COM\'/}"
+            ARGS="$ARGS --pre-run=$PRE_RUN_COM"
+            #execute the requested command
+            echo "executing pre-run command '$PRE_RUN_COM':"
+            $PRE_RUN_COM || exit $?
+            break
+            exit
+        fi
+    done
 fi
 
 # ------------- keyfile -------------
@@ -183,6 +216,20 @@ else
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any include file."
 fi
 
+# ------------- backup deleted files -------------
+
+if [[ ! "${ARGS//--backup-deleted/}" == "$ARGS" ]]
+then
+    DATE=
+    machine_is Darwin && DATE=$(date "+%Y-%m-%d")
+    if [ -z "$DATE" ]
+    then
+        echo "BUG TRAP: need implementation of date for this machine"
+        exit 3
+    fi
+    ADDITIONAL_FLAGS+="--delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
+fi
+
 # ------------- resolve argument conflicts -------------
 
 #need to remove sparse if inplace if given
@@ -196,20 +243,23 @@ fi
 
 if [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]]
 then
-    # translation origin
+    # translation origin: USER_REMOTE is used here because it was already replaced above
     case "`hostname`" in
         "tud14231"|"imac"|"csr-875717.csr.utexas.edu")
             #inverse translation of Darwin homes
-            FROM="/Users/$USER"
+            FROM="/Users/$USER_REMOTE"
         ;;
         "srv227" )
-            FROM="/home/nfs/$USER"
+            FROM="/home/nfs/$USER_REMOTE"
         ;;
         "login1"|"login2"|"login3")
-            FROM="/home1/00767/$USER"
+            FROM="/home1/00767/$USER_REMOTE"
+        ;;
+        "login1.corral.tacc.utexas.edu")
+            FROM="/home/utexas/csr/$USER_REMOTE"
         ;;
         * )
-            FROM="$HOME"
+            FROM="/home/$USER_REMOTE"
         ;;
     esac
     # translation destiny
@@ -221,15 +271,22 @@ then
         "linux-bastion.tudelft.nl" )
             TO="/home/nfs/$USER_REMOTE"
         ;;
-        "login1.ls5.tacc.utexas.edu"|"login2.ls5.tacc.utexas.edu"|"login3.ls5.tacc.utexas.edu")
+        "ls5.tacc.utexas.edu"|"login3.ls5.tacc.utexas.edu")
             TO="/home1/00767/$USER_REMOTE"
+        ;;
+        "corral.tacc.utexas.edu")
+            TO="/home/utexas/csr/$USER_REMOTE"
         ;;
         * )
             TO="/home/$USER_REMOTE"
         ;;
     esac
+    # echo FROM=$FROM
+    # echo TO=$TO
+    # echo "DIR_REMOTE=$DIR_REMOTE (before translating)"
     #translate
     DIR_REMOTE="${DIR_REMOTE/$FROM/$TO}"
+    # echo "DIR_REMOTE=$DIR_REMOTE (after translating)"
 
 fi
 
