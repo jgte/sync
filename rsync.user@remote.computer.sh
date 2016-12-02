@@ -227,7 +227,7 @@ then
         echo "BUG TRAP: need implementation of date for this machine"
         exit 3
     fi
-    ADDITIONAL_FLAGS+="--delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
+    ADDITIONAL_FLAGS+=" --delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
 fi
 
 # ------------- resolve argument conflicts -------------
@@ -272,6 +272,7 @@ then
             TO="/home/nfs/$USER_REMOTE"
         ;;
         "ls5.tacc.utexas.edu"|"login3.ls5.tacc.utexas.edu")
+            which ls5.sh &> /dev/null && ls5.sh token
             TO="/home1/00767/$USER_REMOTE"
         ;;
         "corral.tacc.utexas.edu")
