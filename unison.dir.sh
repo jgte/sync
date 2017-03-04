@@ -15,8 +15,19 @@
 #
 # https://github.com/jgte/bash
 
+function machine_is
+{
+  OS=`uname -v`
+  [[ ! "${OS//$1/}" == "$OS" ]] && return 0 || return 1
+}
+
 function file_ends_with_newline() {
-    [[ "$(tail -c1 "$1")" == "" ]]
+    if machine_is Darwin
+    then
+        [[ "$(tail -n1 "$1")" == "" ]]
+    else
+        [[ "$(tail -c1 "$1")" == "" ]]
+    fi
 }
 
 # ------------- Finding where I am -------------
@@ -75,55 +86,63 @@ DIR=$HOME/$DIR
 
 # ------------- exclude file -------------
 
-if [ -e "$LOCAL/unison.ignore" ]
+FILE_NOW="$LOCAL/unison.ignore"
+if [ -e "$FILE_NOW" ]
 then
-    file_ends_with_newline "$LOCAL/unison.ignore" || {
-        echo "ERROR: file $LOCAL/unison.ignore needs to end with a newline."
+    file_ends_with_newline "$FILE_NOW" || {
+        echo "ERROR: file $FILE_NOW needs to end with a newline."
         exit 3
     }
     while read i
     do
         EXCLUDE+=(-ignore "$i")
-    done < "$LOCAL/unison.ignore"
-    echo "Using exclude file $LOCAL/unison.ignore: ${EXCLUDE[@]}"
+    done < "$FILE_NOW"
+    echo "Using exclude file $FILE_NOW: ${EXCLUDE[@]}"
 else
     echo "Not using any exclude file."
 fi
 
 # ------------- include file -------------
 
-if [ -e "$LOCAL/unison.ignorenot" ]
+FILE_NOW="$LOCAL/unison.ignorenot"
+if [ -e "$FILE_NOW" ]
 then
-    file_ends_with_newline "$LOCAL/unison.ignorenot" || {
-        echo "ERROR: file $LOCAL/unison.ignorenot needs to end with a newline."
+    file_ends_with_newline "$FILE_NOW" || {
+        echo "ERROR: file $FILE_NOW needs to end with a newline."
         exit 3
     }
     while read i
     do
         INCLUDE+=(-ignorenot "$i")
-    done < "$LOCAL/unison.ignorenot"
-    echo "Using include file $LOCAL/unison.ignorenot: ${INCLUDE[@]}"
+    done < "$FILE_NOW"
+    echo "Using include file $FILE_NOW: ${INCLUDE[@]}"
 else
     echo "Not using any include file."
 fi
 
 # ------------- argument file -------------
 
-FILE_FLAGS=
-if [ -e "$LOCAL/unison.arguments" ]
+FILE_NOW="$LOCAL/unison.arguments"
+if [ -e "$FILE_NOW" ]
 then
+    file_ends_with_newline "$FILE_NOW" || {
+        echo "ERROR: file $FILE_NOW needs to end with a newline."
+        exit 3
+    }
     while read i
     do
+        echo $i
         FILE_FLAGS+=($i)
-    done < $LOCAL/unison.arguments
-    echo "Using arguments file $LOCAL/unison.arguments"
+    done < "$FILE_NOW"
+    echo "Using arguments file $FILE_NOW"
 else
+    FILE_FLAGS=
     echo "Not using any arguments file."
 fi
 
 # ------------- more arguments in the command line -------------
 
-ADDITIONAL_FLAGS="$@ ${FILE_FLAGS[@]}"
+ADDITIONAL_FLAGS="$@"
 
 # ------------- dirs -------------
 
@@ -145,7 +164,6 @@ else
     DIR="${DIR/\/home\/$USER\//\/home\/$USER\/}"
     DIR="${DIR/"/Users/$USER/"/"/Users/$USER/"}"
 fi
-
 
 # ------------- force flags -------------
 
@@ -215,7 +233,7 @@ then
         echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
         echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
         echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
-        # echo "File flags           : ${FILE_FLsAGS:+"${FILE_FLAGS[@]}"}"
+        echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
         echo "dir is               : $HOME/$i"
         echo "local is             : $LOCAL/$i"
         echo "====================================================================="
@@ -223,6 +241,7 @@ then
             ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
             ${EXCLUDE:+"${EXCLUDE[@]}"} \
             ${INCLUDE:+"${INCLUDE[@]}"} \
+            ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
             $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
             "$HOME/$i" "$LOCAL/$i"  || exit $?
 
@@ -241,7 +260,7 @@ else
     echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
     echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
     echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
-    # echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
+    echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
     echo "dir is               : $DIR"
     echo "local is             : $LOCAL"
     echo "====================================================================="
@@ -249,6 +268,7 @@ else
         ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
         ${EXCLUDE:+"${EXCLUDE[@]}"} \
         ${INCLUDE:+"${INCLUDE[@]}"} \
+        ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
         $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
         "$DIR" "$LOCAL"
 
