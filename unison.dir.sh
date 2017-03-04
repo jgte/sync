@@ -154,7 +154,6 @@ then
         if [[ ! "${i//--remote-dir=/}" == "$i" ]]
         then
             DIR="${i/--remote-dir=/}"
-            echo $DIR
             ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR/}"
             break
         fi
