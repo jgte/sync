@@ -22,13 +22,35 @@ function machine_is
 }
 
 function file_ends_with_newline() {
-    if machine_is Darwin
-    then
-        [[ "$(tail -n1 "$1")" == "" ]]
-    else
-        [[ "$(tail -c1 "$1")" == "" ]]
-    fi
+    [[ "$(tail -c1 "$1")" == "" ]]
+    # if machine_is Darwin
+    # then
+    #     [[ "$(tail -n1 "$1")" == "" ]]
+    # else
+    #     [[ "$(tail -c1 "$1")" == "" ]]
+    # fi
 }
+
+# ------------- unison executable -------------
+
+UNISON="$(which unison)"
+if [ -z "$UNISON" ]
+then
+    for i in / /usr /usr/local $HOME
+    do
+        for j in bin sbin
+        do
+            [ -e "$i$j/unison" ] && UNISON="$i$j/unison"
+            [ ! -z "$UNISON" ] && break
+        done
+        [ ! -z "$UNISON" ] && break
+    done
+fi
+if [ -z "$UNISON" ]
+then
+    echo ERROR: cannot find unison binary
+    exit 3
+fi
 
 # ------------- Finding where I am -------------
 
@@ -236,7 +258,7 @@ then
         echo "dir is               : $HOME/$i"
         echo "local is             : $LOCAL/$i"
         echo "====================================================================="
-        unison \
+        $UNISON \
             ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
             ${EXCLUDE:+"${EXCLUDE[@]}"} \
             ${INCLUDE:+"${INCLUDE[@]}"} \
@@ -263,7 +285,7 @@ else
     echo "dir is               : $DIR"
     echo "local is             : $LOCAL"
     echo "====================================================================="
-    unison \
+    $UNISON \
         ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
         ${EXCLUDE:+"${EXCLUDE[@]}"} \
         ${INCLUDE:+"${INCLUDE[@]}"} \
