@@ -41,6 +41,13 @@ then
     exit 3
 fi
 
+if [[ ! "${@/debug/}" == "$@" ]] || [[ ! "${@/echo/}" == "$@" ]]
+then
+    ECHO=echo
+else
+    ECHO=
+fi
+
 LOG=`basename "$0"`.log
 LOG=${LOG// /_}
 
@@ -340,11 +347,11 @@ then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching local -> remote"
     if [ -z "$RSH" ]
     then
-        rsync --log-file="$LOCAL/$LOG" \
+        $ECHO rsync --log-file="$LOCAL/$LOG" \
             $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE \
             $LOCAL/ $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ | grep -v 'files...'
     else
-        rsync --log-file="$LOCAL/$LOG" --rsh="$RSH" \
+        $ECHO rsync --log-file="$LOCAL/$LOG" --rsh="$RSH" \
             $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE \
             $LOCAL/ $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ | grep -v 'files...'
     fi
@@ -357,11 +364,11 @@ then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching remote -> local"
     if [ -z "$RSH" ]
     then
-        rsync --log-file="$LOCAL/$LOG" \
+        $ECHO rsync --log-file="$LOCAL/$LOG" \
             $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE \
             $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$LOCAL/" | grep -v 'files...'
     else
-        rsync --log-file="$LOCAL/$LOG" --rsh="$RSH" \
+        $ECHO rsync --log-file="$LOCAL/$LOG" --rsh="$RSH" \
             $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE \
             $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$LOCAL/" | grep -v 'files...'
     fi
