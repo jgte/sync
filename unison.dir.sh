@@ -166,7 +166,28 @@ fi
 
 ADDITIONAL_FLAGS="$@"
 
+# ------------- debug -------------
+
+if [[ ! "${ADDITIONAL_FLAGS/-debug/}" == "$ADDITIONAL_FLAGS" ]]; then
+              UNISON="echo $UNISON"
+    ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-debug/}"
+fi
+
 # ------------- dirs -------------
+
+if [[ ! "${FILE_FLAGS//--remote-dir=/}" == "${FILE_FLAGS}" ]]
+then
+    for i in $FILE_FLAGS
+    do
+        echo $i
+        if [[ ! "${i//--remote-dir=/}" == "$i" ]]
+        then
+            DIR="${i/--remote-dir=/}"
+            FILE_FLAGS="${FILE_FLAGS//--remote-dir=$DIR/}"
+            break
+        fi
+    done
+fi
 
 if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "${ADDITIONAL_FLAGS}" ]]
 then
@@ -206,11 +227,11 @@ fi
 if [[ ! "${ADDITIONAL_FLAGS/--nodeletion-here/}" == "$ADDITIONAL_FLAGS" ]]; then
     NODELETIONLOCAL_FLAGS="-nodeletion $LOCAL"
       NODELETIONDIR_FLAGS=
-    ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-nodeletion-here/}"
-elif [[ ! "${ADDITIONAL_FLAGS/-nodeletion-there/}" == "$@" ]]; then
+         ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-nodeletion-here/}"
+elif [[ ! "${ADDITIONAL_FLAGS/-nodeletion-there/}" == "$ADDITIONAL_FLAGS" ]]; then
     NODELETIONLOCAL_FLAGS=
       NODELETIONDIR_FLAGS="-nodeletion $DIR"
-    ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-nodeletion-there/}"
+         ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-nodeletion-there/}"
 else
     NODELETIONLOCAL_FLAGS=
       NODELETIONDIR_FLAGS=
@@ -221,52 +242,88 @@ fi
 if [ "$(basename $DIR)" == "dir_list" ] || [ "$(basename $DIR)" == "recursive" ]
 then
 
+    #get dir list
+    [ "$(basename $DIR)" == "dir_list" ]  && DIR_LIST_FILE=$LOCAL/unison.dir_list
+    [ "$(basename $DIR)" == "recursive" ] && DIR_LIST_FILE=$(TMP=/tmp/unison.recursive.$RANDOM && find $LOCAL -type d -maxdepth 1 > $TMP 2>/dev/null && echo $TMP)
+
     #sanity
-    if [ "$(basename $DIR)" == "dir_list" ] && [ ! -e "$LOCAL/unison.dir_list" ]
+    if [ ! -e "$DIR_LIST_FILE" ]
     then
-        echo "ERROR: need file with list of directories to sync: $LOCAL/unison.dir_list"
+        echo "ERROR: need file with list of directories to sync: $DIR_LIST_FILE"
         exit 3
     fi
 
-    #get dir list
-    [ "$(basename $DIR)" == "dir_list" ]  && DIR_LIST=$(cat $LOCAL/unison.dir_list | grep -v ^#)
-    [ "$(basename $DIR)" == "recursive" ] && DIR_LIST=$(find $LOCAL -type d -maxdepth 1)
-
     #loop over list of directories
-    for i in $DIR_LIST
-    do
-        [ ! -d "$HOME/$i"  ] && echo "ERROR: cannot find $HOME/$i"
-        [ ! -d "$LOCAL/$i" ] && echo "ERROR: cannot find $LOCAL/$i"
-        ( [ ! -d "$LOCAL/$i" ] || [ ! -d "$HOME/$i" ] ) && continue
+    for line in $(cat $DIR_LIST_FILE); do
+
+        line=${line%%\#*}
+        if [[ ! "${line/\ /}" == "$line" ]]; then
+            line=($line)
+            subdir=${line[0]}
+            for ((i = 1 ; i < ${#line[@]} ; i++)); do
+               case ${line[i]} in
+                -ignorenot)
+                    INCLUDE+=(-ignorenot "${line[i+1]} ${line[i+2]}")
+                    i=$(( i+2 ))
+                ;;
+                -ignore)
+                    EXCLUDE+=(-ignore "${line[i+1]} ${line[i+2]}")
+                    i=$(( i+2 ))
+                ;;
+                *)
+                    ADDITIONAL_FLAGS+=" ${line[i]}"
+                ;;
+                esac
+            done
+        else
+            subdir=$line
+        fi
+
+        # ------------- sanity -------------
+
+        SKIP=false
+
+        #check for full comment lines
+        [ -z "$line" ] && SKIP=true
+        #check for non-existing directories
+        [ ! -d "$HOME/$subdir"  ] && echo "ERROR: cannot find $HOME/$subdir"  && SKIP=true
+        [ ! -d "$LOCAL/$subdir" ] && echo "ERROR: cannot find $LOCAL/$subdir" && SKIP=true
+        #skip self-pointing dirs
+        [ ! -z "$(readlink  $HOME/$subdir)" ] && [ "$(cd $(readlink  $HOME/$subdir); pwd)" == "$(cd $LOCAL/$subdir; pwd)" ] && echo "ERROR: $HOME/$subdir  points to $LOCAL/$subdir" && SKIP=true
+        [ ! -z "$(readlink $LOCAL/$subdir)" ] && [ "$(cd $(readlink $LOCAL/$subdir); pwd)" == "$(cd  $HOME/$subdir; pwd)" ] && echo "ERROR: $LOCAL/$subdir points to  $HOME/$subdir" && SKIP=true
+
+        $SKIP && continue
 
         # ------------- force/nodeletion flags -------------
 
-        [ ! -z      "$FORCELOCAL_FLAGS" ] &&      FORCELOCAL_FLAGS="-force $LOCAL/$i"
-        [ ! -z        "$FORCEDIR_FLAGS" ] &&        FORCEDIR_FLAGS="-force $HOME/$i"
-        [ ! -z "$NODELETIONLOCAL_FLAGS" ] && NODELETIONLOCAL_FLAGS="-nodeletion $LOCAL/$i"
-        [ ! -z   "$NODELETIONDIR_FLAGS" ] &&   NODELETIONDIR_FLAGS="-nodeletion $HOME/$i"
+        [ ! -z      "$FORCELOCAL_FLAGS" ] &&      FORCELOCAL_FLAGS="-force $LOCAL/$subdir"
+        [ ! -z        "$FORCEDIR_FLAGS" ] &&        FORCEDIR_FLAGS="-force $HOME/$subdir"
+        [ ! -z "$NODELETIONLOCAL_FLAGS" ] && NODELETIONLOCAL_FLAGS="-nodeletion $LOCAL/$subdir"
+        [ ! -z   "$NODELETIONDIR_FLAGS" ] &&   NODELETIONDIR_FLAGS="-nodeletion $HOME/$subdir" && echo "4:NODELETIONDIR_FLAGS=$NODELETIONDIR_FLAGS"
 
         # ------------- batch mode -------------
 
         echo "====================================================================="
-        echo "Default flags        : ${DEFAULT_FLAGS[@]}"
+        echo "Default flags        : ${DEFAULT_FLAGS[@]} "
         echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
-        echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
         echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
         echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
         echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
-        echo "dir is               : $HOME/$i"
-        echo "local is             : $LOCAL/$i"
+        echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
+        echo "dir is               : $HOME/$subdir"
+        echo "local is             : $LOCAL/$subdir"
         echo "====================================================================="
         $UNISON \
-            ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
+            "${DEFAULT_FLAGS[@]}" \
+            "${IGNORE_FLAGS[@]}" \
             ${EXCLUDE:+"${EXCLUDE[@]}"} \
             ${INCLUDE:+"${INCLUDE[@]}"} \
             ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
-            $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
-            "$HOME/$i" "$LOCAL/$i"  || exit $?
+            $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS \
+            "$HOME/$subdir" "$LOCAL/$subdir"  || exit $?
 
     done
+
 else
 
     [ ! -d "$DIR"   ] && echo "ERROR: cannot find $DIR"
@@ -286,7 +343,8 @@ else
     echo "local is             : $LOCAL"
     echo "====================================================================="
     $UNISON \
-        ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
+        "${DEFAULT_FLAGS[@]}" \
+        "${IGNORE_FLAGS[@]}" \
         ${EXCLUDE:+"${EXCLUDE[@]}"} \
         ${INCLUDE:+"${INCLUDE[@]}"} \
         ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
