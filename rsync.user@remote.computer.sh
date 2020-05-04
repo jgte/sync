@@ -354,6 +354,10 @@ then
     ADDITIONAL_FLAGS+=" --delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
 fi
 
+# ------------- get rid of default flags -------------
+
+[[ "${ARGS//--no-default-flags/}" == "$ARGS" ]] || DEFAULT_FLAGS=
+
 # ------------- resolve argument conflicts -------------
 
 #need to remove sparse if inplace if given
