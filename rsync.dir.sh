@@ -122,12 +122,63 @@ then
     done
 fi
 
+# ------------- include .git dirs when --delete is given -------------
+
+function ensure_file()
+{
+  [ -e "$1" ] || touch "$1"
+}
+
+GITSYNC=false
+#make sure rsync.include exists
+ensure_file "$LOCAL/rsync.include"
+if [[ "${@/--delete}" == "$@" ]]
+then
+  if [ -e "$LOCAL/rsync.include" ] && grep -q '.git*' "$LOCAL/rsync.include"
+  then
+    echo "NOTICE: to sync .git, need the --delete flag, otherwise .git dirs are ignored."
+    grep -v '.git' "$LOCAL/rsync.include" > /tmp/rsync.include.$$ || true
+    mv -f /tmp/rsync.include.$$ "$LOCAL/rsync.include"
+  fi
+else
+  if [ -e "$LOCAL/rsync.include" ] && ! grep -q '.git*' "$LOCAL/rsync.include"
+  then
+    echo "NOTICE: not ignoring .git, since the --delete flag was given."
+    echo '.git*' >> "$LOCAL/rsync.include"
+    GITSYNC=true
+  fi
+fi
+
+# ------------- resolve git versions -------------
+
+if $GITSYNC
+then
+  for d in $(find "$LOCAL" -type d -name .git)
+  do
+    GITDIRLOCAL=$(dirname $d)
+    GITDIRSINK=${GITDIRLOCAL/$LOCAL/$DIRSINK}
+    GITVERSINK=$( git -C $GITDIRSINK  log --pretty=format:"%at" 2> /dev/null | head -n1)
+    GITVERLOCAL=$(git -C $GITDIRLOCAL log --pretty=format:"%at" 2> /dev/null | head -n1)
+    if [ ! -z "$GITVERSINK" ] && [ ! -z "$GITVERLOCAL" ] && [ $GITVERLOCAL -lt $GITVERSINK ]
+    then
+        echo "WARNING: date of git repo at source is lower than at sink:"
+        echo "source: $($DATE -d @$GITVERLOCAL) $GITDIRLOCAL/$i"
+        echo "sink  : $($DATE -d @$GITVERSINK) $GITDIRSINK/$i"
+        echo "Skip synching '$i'"
+        EXCLUDE+=" --exclude=${GITDIRLOCAL/$LOCAL}"
+    # else
+    #   echo "source: $($DATE -d @$GITVERLOCAL) $GITDIRLOCAL/$i"
+    #   echo "sink  : $($DATE -d @$GITVERSINK) $GITDIRSINK/$i"
+    fi
+  done
+fi
+
 # ------------- exclude file -------------
 
 if [ -e "$LOCAL/rsync.exclude" ]
 then
     EXCLUDE="--exclude-from=$LOCAL/rsync.exclude"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using exclude file $LOCAL/rsync.exclude:\n`cat $LOCAL/rsync.exclude`\n"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using exclude file $LOCAL/rsync.exclude:\n`cat "$LOCAL/rsync.exclude"`\n"
 else
     EXCLUDE=""
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any exclude file."
