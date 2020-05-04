@@ -250,7 +250,7 @@ else
     DIR_REMOTE="${LOCAL/\/Users\/$USER\///Users/$USER_REMOTE/}"
 fi
 
-# # ------------- pre-run comman -------------
+# # ------------- pre-run command -------------
 
 if [[ ! "${ADDITIONAL_FLAGS//--pre-run=/}" == "$ARGS" ]]
 then
