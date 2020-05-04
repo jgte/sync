@@ -430,16 +430,23 @@ fi
 #     ping -c 1 $COMPUTER_REMOTE > /dev/null || exit 3
 # fi
 
+# ------------- update flag -------------
+
+if [ remote2local ] || [ local2remote ]; then
+    [[ "${ADDITIONAL_FLAGS//--update/}" == "$ADDITIONAL_FLAGS" ]] && ADDITIONAL_FLAGS+=" --update"
+fi
+
 # ------------- feedback -------------
 
 if [[ "${ARGS//--no-feedback/}" == "$ARGS" ]]
 then
     ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --progress --human-readable"
+    echo "Default    flags are $DEFAULT_FLAGS"
     echo "Additional flags are $ADDITIONAL_FLAGS"
     echo "Remote computer is $COMPUTER_REMOTE; remote user is $USER_REMOTE; local user is $USER"
     echo "Remote dir is $DIR_REMOTE; local dir is $LOCAL"
-    [[ ! "${ARGS//--not-local2dir/}" == "$ARGS" ]] && echo "Not synching local to dir"
-    [[ ! "${ARGS//--not-dir2local/}" == "$ARGS" ]] && echo "Not synching dir to local"
+    ! local2remote && echo "Not synching local to remote"
+    ! remote2local && echo "Not synching remote to local"
 else
     #at least show me the changes
     ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --itemize-changes"
