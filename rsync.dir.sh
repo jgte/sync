@@ -22,7 +22,7 @@
 
 # ------------- dynamic parameters -------------
 
-LOCAL=$(cd $(dirname $0); pwd)
+LOCAL="$(cd $(dirname $0); pwd)"
 
 LOG=`basename "$0"`.log
 LOG=${LOG// /_}
@@ -86,12 +86,12 @@ DIR=$HOME/$DIR
 
 if [ -e "$LOCAL/rsync.arguments" ]
 then
-    if [ `cat $LOCAL/rsync.arguments | wc -l` -gt 1 ]
+    if [ `cat "$LOCAL/rsync.arguments" | wc -l` -gt 1 ]
     then
         echo "ERROR: file $LOCAL/rsync.arguments cannot have more than one line."
         exit 3
     fi
-    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat $LOCAL/rsync.arguments`"
+    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat "$LOCAL/rsync.arguments"`"
     #need to clean script-specific arguments, otherwise they contaminate the rsync call
     for i in $SCRIPT_ARGS
     do
@@ -101,7 +101,7 @@ then
             ARGS="$ARGS $i"
         fi
     done
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $LOCAL/rsync.arguments: `cat $LOCAL/rsync.arguments`"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $LOCAL/rsync.arguments: `cat "$LOCAL/rsync.arguments"`"
 else
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any arguments file."
 fi
@@ -138,7 +138,7 @@ fi
 if [ -e "$LOCAL/rsync.include" ]
 then
     INCLUDE="--include-from=$LOCAL/rsync.include"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using include file $LOCAL/rsync.include:\n`cat $LOCAL/rsync.include`\n"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using include file $LOCAL/rsync.include:\n`cat "$LOCAL/rsync.include"`\n"
 else
     INCLUDE=""
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any include file."
