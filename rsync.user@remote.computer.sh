@@ -161,23 +161,45 @@ ADDITIONAL_FLAGS=${ADDITIONAL_FLAGS//--remote-dir=.*/}
 
 # ------------- remote computer name -------------
 
-COMPUTER_REMOTE=`basename $0`
-COMPUTER_REMOTE=${COMPUTER_REMOTE%.sh*}
-COMPUTER_REMOTE=${COMPUTER_REMOTE#*rsync.}
+function strip_file_accessories(){
+    OUT=$(basename $1)
+    OUT=${OUT%.sh*}
+    OUT=${OUT#*rsync.}
+    echo $OUT
+}
+
+function computer_remote(){
+    COMPUTER_REMOTE=$(strip_file_accessories $1)
+    COMPUTER_REMOTE=${COMPUTER_REMOTE#*@}
+    echo $COMPUTER_REMOTE    
+}
+
+COMPUTER_REMOTE=$(computer_remote $0)
 
 # ------------- remote username -------------
 
-#strip user form the remote computer name
-USER_REMOTE=${COMPUTER_REMOTE%@*}
-#handling user in the computer name
-if [ "$USER_REMOTE" == "$COMPUTER_REMOTE" ]
-then
-    #if the user is the same of the computer, then no user was given
-    USER_REMOTE=${USER:-unknown}
-else
-    #if there's a user, then remove it form the computer name
-    COMPUTER_REMOTE=${COMPUTER_REMOTE#*@}
-fi
+function user_remote(){
+    local DEBUG_HERE=false
+    $DEBUG_HERE && echo "0:$1" 1>&2
+    #get remote computer
+    USER_REMOTE=$(strip_file_accessories $1)
+    $DEBUG_HERE && echo "1:$USER_REMOTE" 1>&2
+    #check if the @ character is there
+    if [[ ! "${USER_REMOTE/\@}" == "$USER_REMOTE" ]]
+    then
+        #get user form the remote computer name
+        USER_REMOTE=${USER_REMOTE%@*}
+        $DEBUG_HERE && echo "2:$USER_REMOTE" 1>&2
+    else
+        #if no user was given, use the current one, default to 'unknown_user'
+        USER_REMOTE=${USER:-unknown_user}
+        $DEBUG_HERE && echo "3.1:$USER_REMOTE" 1>&2
+    fi
+    echo $USER_REMOTE
+}
+
+USER_REMOTE=$(user_remote $0)
+
 # ------------- local username -------------
 
 #this is useful when run from crontab and the USER_REMOTE is set
