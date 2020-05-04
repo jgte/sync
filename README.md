@@ -6,7 +6,7 @@ Introduction
 
 These scripts are useful for synchronizing files within or between different computers. Their usage is not very standard but very simple. In the directory containing the files (or sub-directories) to be synchronized, create a link to one of these scripts. The name of the link contains the 'remote' directory to synchronize with. Furthermore, the scripts `[rsync|unison].dir.sh` are meant for 'remote' directories in the local computer and the scripts `[rsync|unison].user@remote.computer.sh` are meant for remote directories in other computers.
 
-The `[rsync|unison].dir.sh` scripts expect the directory specified in the name of the link to be relative to `$HOME`. The ':' character is used to specify subdirectories. For example, if `rsync.dir.sh` resides in `$HOME/bin/` and you want to backup the contents of `$HOME/projects/` to `$HOME/backup/projects/`, then inside this directory create the link:
+The `[rsync|unison].dir.sh` scripts expect the directory specified in the name of the link to be relative to `$HOME`. The ':' character is used to specify subdirectories. For example, if `rsync.dir.sh` resides in `$HOME/bin/` and you want to backup the contents of `$HOME/projects/` to `$HOME/backup/projects/`, then inside that directory create the link:
 
 `ln -s ~/bin/rsync.dir.sh rsync.backup:projects.sh`
 
