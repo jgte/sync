@@ -87,7 +87,11 @@ LOG=${LOG// /_}
 # ------------- static parameters -------------
 
 #default flags
-DEFAULT_FLAGS=" --recursive --update --times --omit-dir-times --links --sparse  --fuzzy --partial --no-perms --no-group --chmod=ugo=rwX --modify-window=1"
+DEFAULT_FLAGS=" --recursive --times --omit-dir-times --links --no-perms --no-group --chmod=ugo=rwX"
+#skip files that are newer on the receiver 
+#NOTICE: this can be dangerous when mirroring, since touching a file at destination will prevent it from being updated
+#        for this reason, --update is added to ADDITIONAL_FLAGS whenever --not-local2remote or --not-remote2local are used
+# DEFAULT_FLAGS+=" --update" 
 DEFAULT_FLAGS+=" --exclude=.DS_Store"
 DEFAULT_FLAGS+=" --exclude=._*"
 DEFAULT_FLAGS+=" --exclude=*.o"
