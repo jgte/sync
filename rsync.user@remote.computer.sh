@@ -283,13 +283,10 @@ SSH_KEY_FILE=$HOME/.ssh/$USER_REMOTE@${COMPUTER_REMOTE%%.*}
 if [ ! -e "$SSH_KEY_FILE" ]
 then
     SSH_KEY_FILE=none
-    # RSH=
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
 else
     [ -z "$SSH_AUTH_SOCK" ] && eval $(ssh-agent -s)
     ssh-add -t 60 $SSH_KEY_FILE
-    # RSH=
-    # RSH="ssh -i $SSH_KEY_FILE"
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using keyfile $SSH_KEY_FILE"
 fi
 
@@ -464,36 +461,22 @@ fi
 
 # ------------- local to remote -------------
 
-if [[ "${ARGS//--not-local2remote/}" == "$ARGS" ]] && [[ "${ARGS//--not-local2dir/}" == "$ARGS" ]]
+if local2remote
 then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching local -> remote"
-    if [ -z "$RSH" ]
-    then
-        $ECHO rsync --log-file="$LOCAL/$LOG" \
-            $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE \
-            $LOCAL/ $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ | grep -v 'files...'
-    else
-        $ECHO rsync --log-file="$LOCAL/$LOG" --rsh="$RSH" \
-            $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE \
-            $LOCAL/ $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ | grep -v 'files...'
-    fi
+    $ECHO rsync --log-file="$LOCAL/$LOG" \
+      $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
+      "$LOCAL/" $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/
 fi
 
 # ------------- remote to local -------------
 
-if [[ "${ARGS//--not-remote2local/}" == "$ARGS" ]] && [[ "${ARGS//--not-dir2local/}" == "$ARGS" ]]
+if remote2local
 then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching remote -> local"
-    if [ -z "$RSH" ]
-    then
-        $ECHO rsync --log-file="$LOCAL/$LOG" \
-            $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE \
-            $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$LOCAL/" | grep -v 'files...'
-    else
-        $ECHO rsync --log-file="$LOCAL/$LOG" --rsh="$RSH" \
-            $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE \
-            $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$LOCAL/" | grep -v 'files...'
-    fi
+    $ECHO rsync --log-file="$LOCAL/$LOG" \
+        $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
+        $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$LOCAL/"
 fi
 
 
