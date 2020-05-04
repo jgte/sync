@@ -372,21 +372,21 @@ fi
 if [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]]
 then
     # translation origin: USER_REMOTE is used here because it was already replaced above
-    case "`hostname`" in
-        "tud14231"|"imac"|"csr-875717.csr.utexas.edu")
+    case "`hostname -f`" in
+        "tud14231"|"csr-875717.csr.utexas.edu")
             #inverse translation of Darwin homes
             FROM="/Users/$USER_REMOTE"
         ;;
-        "srv227" )
+        "srv227.tudelft.net" )
             FROM="/home/nfs/$USER_REMOTE"
         ;;
-        "login1"|"login2"|"login3")
+        *.ls5.tacc.utexas.edu)
             FROM="/home1/00767/$USER_REMOTE"
         ;;
-        "login1.corral.tacc.utexas.edu")
+        *.corral.tacc.utexas.edu)
             FROM="/home/utexas/csr/$USER_REMOTE"
         ;;
-        * )
+        *)
             FROM="/home/$USER_REMOTE"
         ;;
     esac
@@ -399,12 +399,13 @@ then
         "linux-bastion.tudelft.nl" )
             TO="/home/nfs/$USER_REMOTE"
         ;;
-        "ls5.tacc.utexas.edu"|"login3.ls5.tacc.utexas.edu")
-            which ls5.sh &> /dev/null && ls5.sh token
+        *.ls5.tacc.utexas.edu|"stampede2.tacc.utexas.edu")
+            which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
             TO="/home1/00767/$USER_REMOTE"
         ;;
-        "corral.tacc.utexas.edu")
-            TO="/home/utexas/csr/$USER_REMOTE"
+        "corral.tacc.utexas.edu"|"wrangler.tacc.utexas.edu")
+            which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
+            TO="/home/$USER_REMOTE"
         ;;
         * )
             TO="/home/$USER_REMOTE"
