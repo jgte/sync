@@ -219,6 +219,8 @@ else
     ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --itemize-changes"
 fi
 
+# ------------- user in the loop? -------------
+
 if [[ "${ARGS//--no-confirmation/}" == "$ARGS" ]]
 then
     echo "Continue [Y/n] ?"
