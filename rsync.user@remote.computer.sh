@@ -121,11 +121,34 @@ DEFAULT_FLAGS+=" --exclude=*~"
 DEFAULT_FLAGS+=" --exclude=*.!sync"
 
 #script-specific arguments
-SCRIPT_ARGS="--not-dir2local --not-local2dir --not-local2remote --not-remote2local --no-confirmation --no-feedback --backup-deleted"
+SCRIPT_ARGS="--not-dir2local --no-d2l --not-local2dir --no-l2d --not-local2remote --no-l2r --not-remote2local --no-r2l --no-confirmation --no-feedback --backup-deleted --no-default-flags"
 
 # ------------- given arguments -------------
 
 ARGS=$@
+
+# ------------- resolve arguments with many names -------------
+
+
+function remote2local()
+{
+  [[ "${ARGS//--not-remote2local}" == "$ARGS" ]] && \
+  [[ "${ARGS//--not-dir2local}"    == "$ARGS" ]] && \
+  [[ "${ARGS//--no-r2l}"           == "$ARGS" ]] && \
+  [[ "${ARGS//--no-d2l}"           == "$ARGS" ]] && \
+  return 0 || \
+  return 1
+}
+
+function local2remote()
+{
+  [[ "${ARGS//--not-local2remote}" == "$ARGS" ]] && \
+  [[ "${ARGS//--not-local2dir}"    == "$ARGS" ]] && \
+  [[ "${ARGS//--no-l2r}"           == "$ARGS" ]] && \
+  [[ "${ARGS//--no-l2d}"           == "$ARGS" ]] && \
+  return 0 || \
+  return 1
+}
 
 # ------------- additonal flags -------------
 
