@@ -22,7 +22,7 @@
 
 # ------------- dynamic parameters -------------
 
-LOCAL="$(cd $(dirname $0); pwd)"
+DIRSOURCE="$(cd $(dirname $0); pwd)"
 
 LOG=`basename "$0"`.log
 LOG=${LOG// /_}
@@ -30,7 +30,7 @@ LOG=${LOG// /_}
 # ------------- static parameters -------------
 
 #default flags
-DEFAULT_FLAGS=" --recursive --update --times --omit-dir-times --links --sparse  --fuzzy --partial --no-perms --no-group --chmod=ugo=rwX --modify-window=1"
+DEFAULT_FLAGS=" --recursive --update --times --omit-dir-times --links --no-group --modify-window=1"
 DEFAULT_FLAGS+=" --exclude=.DS_Store"
 DEFAULT_FLAGS+=" --exclude=._*"
 DEFAULT_FLAGS+=" --exclude=*.o"
@@ -76,22 +76,22 @@ done
 
 # ------------- dir -------------
 
-DIR=`basename "$0"`
-DIR=${DIR#rsync.}
-DIR=${DIR%.sh}
-DIR=${DIR//\:/\/}
-DIR=$HOME/$DIR
+DIRSINK=`basename "$0"`
+DIRSINK=${DIRSINK#rsync.}
+DIRSINK=${DIRSINK%.sh}
+DIRSINK=${DIRSINK//\:/\/}
+DIRSINK=$HOME/$DIRSINK
 
 # ------------- argument file -------------
 
-if [ -e "$LOCAL/rsync.arguments" ]
+if [ -e "$DIRSOURCE/rsync.arguments" ]
 then
-    if [ `cat "$LOCAL/rsync.arguments" | wc -l` -gt 1 ]
+    if [ `cat "$DIRSOURCE/rsync.arguments" | wc -l` -gt 1 ]
     then
-        echo "ERROR: file $LOCAL/rsync.arguments cannot have more than one line."
+        echo "ERROR: file $DIRSOURCE/rsync.arguments cannot have more than one line."
         exit 3
     fi
-    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat "$LOCAL/rsync.arguments"`"
+    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat "$DIRSOURCE/rsync.arguments"`"
     #need to clean script-specific arguments, otherwise they contaminate the rsync call
     for i in $SCRIPT_ARGS
     do
@@ -101,7 +101,7 @@ then
             ARGS="$ARGS $i"
         fi
     done
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $LOCAL/rsync.arguments: `cat "$LOCAL/rsync.arguments"`"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $DIRSOURCE/rsync.arguments: `cat "$DIRSOURCE/rsync.arguments"`"
 else
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any arguments file."
 fi
@@ -114,9 +114,9 @@ then
     do
         if [[ ! "${i//--remote-dir=/}" == "$i" ]]
         then
-            DIR=${i/--remote-dir=/}
-            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR/}"
-            ARGS="$ARGS --remote-dir=$DIR"
+            DIRSINK=${i/--remote-dir=/}
+            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIRSINK/}"
+            ARGS="$ARGS --remote-dir=$DIRSINK"
             break
         fi
     done
@@ -131,20 +131,20 @@ function ensure_file()
 
 GITSYNC=false
 #make sure rsync.include exists
-ensure_file "$LOCAL/rsync.include"
-if [[ "${@/--delete}" == "$@" ]]
+ensure_file "$DIRSOURCE/rsync.include"
+if [[ "${$ADDITIONAL_FLAGS/--delete}" == "$ADDITIONAL_FLAGS" ]]
 then
-  if [ -e "$LOCAL/rsync.include" ] && grep -q '.git*' "$LOCAL/rsync.include"
+  if [ -e "$DIRSOURCE/rsync.include" ] && grep -q '.git*' "$DIRSOURCE/rsync.include"
   then
     echo "NOTICE: to sync .git, need the --delete flag, otherwise .git dirs are ignored."
-    grep -v '.git' "$LOCAL/rsync.include" > /tmp/rsync.include.$$ || true
-    mv -f /tmp/rsync.include.$$ "$LOCAL/rsync.include"
+    grep -v '.git' "$DIRSOURCE/rsync.include" > /tmp/rsync.include.$$ || true
+    mv -f /tmp/rsync.include.$$ "$DIRSOURCE/rsync.include"
   fi
 else
-  if [ -e "$LOCAL/rsync.include" ] && ! grep -q '.git*' "$LOCAL/rsync.include"
+  if [ -e "$DIRSOURCE/rsync.include" ] && ! grep -q '.git*' "$DIRSOURCE/rsync.include"
   then
     echo "NOTICE: not ignoring .git, since the --delete flag was given."
-    echo '.git*' >> "$LOCAL/rsync.include"
+    echo '.git*' >> "$DIRSOURCE/rsync.include"
     GITSYNC=true
   fi
 fi
@@ -153,10 +153,11 @@ fi
 
 if $GITSYNC
 then
-  for d in $(find "$LOCAL" -type d -name .git)
+  for d in $(find "$DIRSOURCE" -type d -name .git)
   do
+    echo "Checking git version at $d"
     GITDIRLOCAL=$(dirname $d)
-    GITDIRSINK=${GITDIRLOCAL/$LOCAL/$DIRSINK}
+    GITDIRSINK=${GITDIRLOCAL/$DIRSOURCE/$DIRSINK}
     GITVERSINK=$( git -C $GITDIRSINK  log --pretty=format:"%at" 2> /dev/null | head -n1)
     GITVERLOCAL=$(git -C $GITDIRLOCAL log --pretty=format:"%at" 2> /dev/null | head -n1)
     if [ ! -z "$GITVERSINK" ] && [ ! -z "$GITVERLOCAL" ] && [ $GITVERLOCAL -lt $GITVERSINK ]
@@ -165,7 +166,7 @@ then
         echo "source: $($DATE -d @$GITVERLOCAL) $GITDIRLOCAL/$i"
         echo "sink  : $($DATE -d @$GITVERSINK) $GITDIRSINK/$i"
         echo "Skip synching '$i'"
-        EXCLUDE+=" --exclude=${GITDIRLOCAL/$LOCAL}"
+        EXCLUDE+=" --exclude=${GITDIRLOCAL/$DIRSOURCE}"
     # else
     #   echo "source: $($DATE -d @$GITVERLOCAL) $GITDIRLOCAL/$i"
     #   echo "sink  : $($DATE -d @$GITVERSINK) $GITDIRSINK/$i"
@@ -175,10 +176,10 @@ fi
 
 # ------------- exclude file -------------
 
-if [ -e "$LOCAL/rsync.exclude" ]
+if [ -e "$DIRSOURCE/rsync.exclude" ]
 then
-    EXCLUDE="--exclude-from=$LOCAL/rsync.exclude"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using exclude file $LOCAL/rsync.exclude:\n`cat "$LOCAL/rsync.exclude"`\n"
+    EXCLUDE="--exclude-from=$DIRSOURCE/rsync.exclude"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using exclude file $DIRSOURCE/rsync.exclude:\n`cat "$DIRSOURCE/rsync.exclude"`\n"
 else
     EXCLUDE=""
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any exclude file."
@@ -186,10 +187,10 @@ fi
 
 # ------------- include file -------------
 
-if [ -e "$LOCAL/rsync.include" ]
+if [ -e "$DIRSOURCE/rsync.include" ]
 then
-    INCLUDE="--include-from=$LOCAL/rsync.include"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using include file $LOCAL/rsync.include:\n`cat "$LOCAL/rsync.include"`\n"
+    INCLUDE="--include-from=$DIRSOURCE/rsync.include"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using include file $DIRSOURCE/rsync.include:\n`cat "$DIRSOURCE/rsync.include"`\n"
 else
     INCLUDE=""
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any include file."
@@ -210,8 +211,8 @@ if [[ "${ARGS//--no-feedback/}" == "$ARGS" ]]
 then
     ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --progress --human-readable"
     echo "Additional flags are $ADDITIONAL_FLAGS"
-    echo "local is $LOCAL"
-    echo "dir is $DIR"
+    echo "local is $DIRSOURCE"
+    echo "dir is $DIRSINK"
     [[ ! "${ARGS//--not-local2dir/}" == "$ARGS" ]] && echo "Not synching local to dir"
     [[ ! "${ARGS//--not-dir2local/}" == "$ARGS" ]] && echo "Not synching dir to local"
 else
@@ -236,7 +237,7 @@ fi
 if [[ "${ARGS//--not-local2dir/}" == "$ARGS" ]] && [[ "${ARGS//--not-local2remote/}" == "$ARGS" ]]
 then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching local -> dir"
-    rsync --log-file="$LOCAL/$LOG" $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE "$LOCAL/" "$DIR/"
+    rsync --log-file="$DIRSOURCE/$LOG" $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE "$DIRSOURCE/" "$DIRSINK/"
 fi
 
 # ------------- dir to local -------------
@@ -244,5 +245,5 @@ fi
 if [[ "${ARGS//--not-dir2local/}" == "$ARGS" ]] && [[ "${ARGS//--not-remote2local/}" == "$ARGS" ]]
 then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching dir -> local"
-    rsync --log-file="$LOCAL/$LOG" $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE "$DIR/" "$LOCAL/"
+    rsync --log-file="$DIRSOURCE/$LOG" $DEFAULT_FLAGS $ADDITIONAL_FLAGS $INCLUDE $EXCLUDE "$DIRSINK/" "$DIRSOURCE/"
 fi
