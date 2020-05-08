@@ -17,7 +17,17 @@
 #
 # To specify unidirection sync, use in the argument list the keywords:
 #
-#   '--not-local2remote' or '--not-remote2local'
+# From the current directory to <dir>:
+#   '--not-local2dir'
+#   '--not-local2remote'
+#   '--no-l2d'
+#   '--no-l2r'
+#
+# From <dir> to the current directory:
+#   '--not-dir2local'
+#   '--not-remote2local'
+#   '--no-d2l'
+#   '--no-r2l'
 #
 # All input arguments are passed as additional rsync arguments (except
 # the keywords above).
@@ -65,10 +75,10 @@ function machine_is
 
 # ------------- dynamic parameters -------------
 
-LOCAL=$(cd $(dirname $0); pwd)
+DIR_SOURCE=$(cd $(dirname $0); pwd)
 
 #can't get this thing to work with paths with blanks, dunno why
-if [[ ! "$LOCAL" == "${LOCAL// /}" ]]
+if [[ ! "$DIR_SOURCE" == "${DIR_SOURCE// /}" ]]
 then
     echo "ERROR: cannot handle paths with blanks."
     exit 3
@@ -87,7 +97,9 @@ LOG=${LOG// /_}
 # ------------- static parameters -------------
 
 #default flags
-DEFAULT_FLAGS=" --recursive --times --omit-dir-times --links --no-perms --no-group --chmod=ugo=rwX"
+DEFAULT_FLAGS=" --recursive --times --omit-dir-times --links --no-group"
+#this makes sense between different machines
+DEFAULT_FLAGS+=" --no-perms --chmod=ugo=rwX"
 #skip files that are newer on the receiver 
 #NOTICE: this can be dangerous when mirroring, since touching a file at destination will prevent it from being updated
 #        for this reason, --update is added to ADDITIONAL_FLAGS whenever --not-local2remote or --not-remote2local are used
@@ -157,19 +169,18 @@ for i in $SCRIPT_ARGS
 do
     ADDITIONAL_FLAGS=${ADDITIONAL_FLAGS//$i/}
 done
-ADDITIONAL_FLAGS=${ADDITIONAL_FLAGS//--remote-dir=.*/}
 
 # ------------- remote computer name -------------
 
 function strip_file_accessories(){
-    OUT=$(basename $1)
+    local OUT=$(basename $1)
     OUT=${OUT%.sh*}
     OUT=${OUT#*rsync.}
     echo $OUT
 }
 
 function computer_remote(){
-    COMPUTER_REMOTE=$(strip_file_accessories $1)
+    local COMPUTER_REMOTE=$(strip_file_accessories $1)
     COMPUTER_REMOTE=${COMPUTER_REMOTE#*@}
     echo $COMPUTER_REMOTE    
 }
@@ -207,14 +218,14 @@ USER=${USER:-$USER_REMOTE}
 
 # ------------- argument file -------------
 
-if [ -e "$LOCAL/rsync.arguments" ]
+if [ -e "$DIR_SOURCE/rsync.arguments" ]
 then
-    if [ `cat "$LOCAL/rsync.arguments" | wc -l` -gt 1 ]
+    if [ `cat "$DIR_SOURCE/rsync.arguments" | wc -l` -gt 1 ]
     then
-        echo "ERROR: file $LOCAL/rsync.arguments cannot have more than one line."
+        echo "ERROR: file $DIR_SOURCE/rsync.arguments cannot have more than one line."
         exit 3
     fi
-    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat "$LOCAL/rsync.arguments"`"
+    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat "$DIR_SOURCE/rsync.arguments"`"
     #need to clean script-specific arguments, otherwise they contaminate the rsync call
     for i in $SCRIPT_ARGS
     do
@@ -224,7 +235,7 @@ then
             ARGS="$ARGS $i"
         fi
     done
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $LOCAL/rsync.arguments: `cat "$LOCAL/rsync.arguments"`"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $DIR_SOURCE/rsync.arguments: `cat "$DIR_SOURCE/rsync.arguments"`"
 else
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any arguments file."
 fi
@@ -246,8 +257,8 @@ then
     done
 else
     #editing the remote dir (no need to escape the / character of the replacing string, apparently)
-    DIR_REMOTE="${LOCAL/\/home\/$USER\///home/$USER_REMOTE/}"
-    DIR_REMOTE="${LOCAL/\/Users\/$USER\///Users/$USER_REMOTE/}"
+    DIR_REMOTE="${DIR_SOURCE/\/home\/$USER\///home/$USER_REMOTE/}"
+    DIR_REMOTE="${DIR_SOURCE/\/Users\/$USER\///Users/$USER_REMOTE/}"
 fi
 
 # # ------------- pre-run command -------------
@@ -290,37 +301,12 @@ else
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using keyfile $SSH_KEY_FILE"
 fi
 
-# ------------- include .git dirs when --delete is given -------------
-
-function ensure_file()
-{
-  [ -e "$1" ] || touch "$1"
-}
-
-#make sure rsync.include exists
-ensure_file "$LOCAL/rsync.include"
-if [[ "${ARGS/--delete}" == "$ARGS" ]]
-then
-  if [ -e "$LOCAL/rsync.include" ] && grep -q '.git*' "$LOCAL/rsync.include"
-  then
-    echo "NOTICE: to sync .git, need the --delete flag, otherwise .git dirs are ignored."
-    grep -v '.git' "$LOCAL/rsync.include" > /tmp/rsync.include.$$ || true
-    mv -f /tmp/rsync.include.$$ "$LOCAL/rsync.include"
-  fi
-else
-  if [ -e "$LOCAL/rsync.include" ] && ! grep -q '.git*' "$LOCAL/rsync.include"
-  then
-    echo "NOTICE: not ignoring .git, since the --delete flag was given."
-    echo '.git*' >> "$LOCAL/rsync.include"
-  fi
-fi
-
 # ------------- exclude file -------------
 
-if [ -e "$LOCAL/rsync.exclude" ]
+if [ -e "$DIR_SOURCE/rsync.exclude" ]
 then
-    EXCLUDE="--exclude-from=$LOCAL/rsync.exclude"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using exclude file $LOCAL/rsync.exclude:\n`cat "$LOCAL/rsync.exclude"`\n"
+    EXCLUDE="--exclude-from=$DIR_SOURCE/rsync.exclude"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using exclude file $DIR_SOURCE/rsync.exclude:\n`cat "$DIR_SOURCE/rsync.exclude"`\n"
 else
     EXCLUDE=""
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any exclude file."
@@ -328,10 +314,10 @@ fi
 
 # ------------- include file -------------
 
-if [ -e "$LOCAL/rsync.include" ]
+if [ -e "$DIR_SOURCE/rsync.include" ]
 then
-    INCLUDE="--include-from=$LOCAL/rsync.include"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using include file $LOCAL/rsync.include:\n`cat "$LOCAL/rsync.include"`\n"
+    INCLUDE="--include-from=$DIR_SOURCE/rsync.include"
+    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using include file $DIR_SOURCE/rsync.include:\n`cat "$DIR_SOURCE/rsync.include"`\n"
 else
     INCLUDE=""
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any include file."
@@ -441,13 +427,15 @@ then
     echo "Default    flags are $DEFAULT_FLAGS"
     echo "Additional flags are $ADDITIONAL_FLAGS"
     echo "Remote computer is $COMPUTER_REMOTE; remote user is $USER_REMOTE; local user is $USER"
-    echo "Remote dir is $DIR_REMOTE; local dir is $LOCAL"
+    echo "Remote dir is $DIR_REMOTE; local dir is $DIR_SOURCE"
     ! local2remote && echo "Not synching local to remote"
     ! remote2local && echo "Not synching remote to local"
 else
     #at least show me the changes
     ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --itemize-changes"
 fi
+
+# ------------- user in the loop? -------------
 
 if [[ "${ARGS//--no-confirmation/}" == "$ARGS" ]]
 then
@@ -464,9 +452,9 @@ fi
 if local2remote
 then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching local -> remote"
-    $ECHO rsync --log-file="$LOCAL/$LOG" \
+    $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
       $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
-      "$LOCAL/" $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/
+      "$DIR_SOURCE/" $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/
 fi
 
 # ------------- remote to local -------------
@@ -474,9 +462,9 @@ fi
 if remote2local
 then
     [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching remote -> local"
-    $ECHO rsync --log-file="$LOCAL/$LOG" \
+    $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
         $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
-        $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$LOCAL/"
+        $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$DIR_SOURCE/"
 fi
 
 
