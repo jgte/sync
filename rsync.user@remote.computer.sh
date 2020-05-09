@@ -80,15 +80,15 @@ DIR_SOURCE=$(cd $(dirname $0); pwd)
 #can't get this thing to work with paths with blanks, dunno why
 if [[ ! "$DIR_SOURCE" == "${DIR_SOURCE// /}" ]]
 then
-    echo "ERROR: cannot handle paths with blanks."
-    exit 3
+  echo "ERROR: cannot handle paths with blanks."
+  exit 3
 fi
 
 if [[ ! "${@/debug/}" == "$@" ]] || [[ ! "${@/echo/}" == "$@" ]]
 then
-    ECHO=echo
+  ECHO=echo
 else
-    ECHO=
+  ECHO=
 fi
 
 LOG=`basename "$0"`.log
@@ -131,16 +131,16 @@ DEFAULT_FLAGS+=" --exclude=Thumbs.db"
 DEFAULT_FLAGS+=" --exclude=Icon"
 DEFAULT_FLAGS+=" --exclude=*~"
 DEFAULT_FLAGS+=" --exclude=*.!sync"
+DEFAULT_FLAGS+=" --exclude=Icon*"
 
 #script-specific arguments
-SCRIPT_ARGS="--not-dir2local --no-d2l --not-local2dir --no-l2d --not-local2remote --no-l2r --not-remote2local --no-r2l --no-confirmation --no-feedback --backup-deleted --no-default-flags"
+SCRIPT_ARGS="--not-dir2local --no-d2l --not-local2dir --no-l2d --not-local2remote --no-l2r --not-remote2local --no-r2l --no-confirmation --no-feedback --backup-deleted --no-default-flags --no-exclude-file --no-include-file --no-arguments-file --be-verbose"
 
 # ------------- given arguments -------------
 
-ARGS=$@
+ARGS="$@"
 
 # ------------- resolve arguments with many names -------------
-
 
 function remote2local()
 {
@@ -162,27 +162,33 @@ function local2remote()
   return 1
 }
 
+function show-feedback()
+{
+  [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && return 0 || return 1
+}
+
+function be-verbose()
+{
+  [[ "${ARGS//--be-verbose/}" == "$ARGS" ]] && return 1 || return 0
+}
+
 # ------------- additonal flags -------------
 
-ADDITIONAL_FLAGS=$ARGS
-for i in $SCRIPT_ARGS
-do
-    ADDITIONAL_FLAGS=${ADDITIONAL_FLAGS//$i/}
-done
+ADDITIONAL_FLAGS="$@"
 
 # ------------- remote computer name -------------
 
 function strip_file_accessories(){
-    local OUT=$(basename $1)
-    OUT=${OUT%.sh*}
-    OUT=${OUT#*rsync.}
-    echo $OUT
+  local OUT=$(basename $1)
+  OUT=${OUT%.sh*}
+  OUT=${OUT#*rsync.}
+  echo $OUT
 }
 
 function computer_remote(){
-    local COMPUTER_REMOTE=$(strip_file_accessories $1)
-    COMPUTER_REMOTE=${COMPUTER_REMOTE#*@}
-    echo $COMPUTER_REMOTE    
+  local COMPUTER_REMOTE=$(strip_file_accessories $1)
+  COMPUTER_REMOTE=${COMPUTER_REMOTE#*@}
+  echo $COMPUTER_REMOTE    
 }
 
 COMPUTER_REMOTE=$(computer_remote $0)
@@ -190,23 +196,23 @@ COMPUTER_REMOTE=$(computer_remote $0)
 # ------------- remote username -------------
 
 function user_remote(){
-    local DEBUG_HERE=false
-    $DEBUG_HERE && echo "0:$1" 1>&2
-    #get remote computer
-    USER_REMOTE=$(strip_file_accessories $1)
-    $DEBUG_HERE && echo "1:$USER_REMOTE" 1>&2
-    #check if the @ character is there
-    if [[ ! "${USER_REMOTE/\@}" == "$USER_REMOTE" ]]
-    then
-        #get user form the remote computer name
-        USER_REMOTE=${USER_REMOTE%@*}
-        $DEBUG_HERE && echo "2:$USER_REMOTE" 1>&2
-    else
-        #if no user was given, use the current one, default to 'unknown_user'
-        USER_REMOTE=${USER:-unknown_user}
-        $DEBUG_HERE && echo "3.1:$USER_REMOTE" 1>&2
-    fi
-    echo $USER_REMOTE
+  local DEBUG_HERE=false
+  $DEBUG_HERE && echo "0:$1" 1>&2
+  #get remote computer
+  USER_REMOTE=$(strip_file_accessories $1)
+  $DEBUG_HERE && echo "1:$USER_REMOTE" 1>&2
+  #check if the @ character is there
+  if [[ ! "${USER_REMOTE/\@}" == "$USER_REMOTE" ]]
+  then
+    #get user form the remote computer name
+    USER_REMOTE=${USER_REMOTE%@*}
+    $DEBUG_HERE && echo "2:$USER_REMOTE" 1>&2
+  else
+    #if no user was given, use the current one, default to 'unknown_user'
+    USER_REMOTE=${USER:-unknown_user}
+    $DEBUG_HERE && echo "3.1:$USER_REMOTE" 1>&2
+  fi
+  echo $USER_REMOTE
 }
 
 USER_REMOTE=$(user_remote $0)
@@ -218,123 +224,162 @@ USER=${USER:-$USER_REMOTE}
 
 # ------------- argument file -------------
 
-if [ -e "$DIR_SOURCE/rsync.arguments" ]
+if [ -e "$DIR_SOURCE/rsync.arguments" ] && \
+  [[ "${ARGS//--no-arguments-file/}" == "$ARGS" ]]
 then
-    if [ `cat "$DIR_SOURCE/rsync.arguments" | wc -l` -gt 1 ]
-    then
-        echo "ERROR: file $DIR_SOURCE/rsync.arguments cannot have more than one line."
-        exit 3
-    fi
-    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat "$DIR_SOURCE/rsync.arguments"`"
-    #need to clean script-specific arguments, otherwise they contaminate the rsync call
-    for i in $SCRIPT_ARGS
-    do
-        if [[ ! "${ADDITIONAL_FLAGS//$i/}" == "$ADDITIONAL_FLAGS" ]]
-        then
-            ADDITIONAL_FLAGS=${ADDITIONAL_FLAGS//$i/}
-            ARGS="$ARGS $i"
-        fi
-    done
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using arguments file $DIR_SOURCE/rsync.arguments: `cat "$DIR_SOURCE/rsync.arguments"`"
+  if [ `cat "$DIR_SOURCE/rsync.arguments" | wc -l` -gt 1 ]
+  then
+    echo "ERROR: file $DIR_SOURCE/rsync.arguments cannot have more than one line."
+    exit 3
+  fi
+  ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat "$DIR_SOURCE/rsync.arguments"`"
+  if show-feedback
+  then
+    echo "====================================================================="
+    echo "File arguments    : $(cat $DIR_SOURCE/rsync.arguments)"
+  fi
 else
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any arguments file."
+  if show-feedback
+  then
+    echo "====================================================================="
+    echo "File arguments    : none"
+  fi
 fi
 
-# ------------- dirs -------------
+# ------------- clean script-specific arguments -------------
 
-if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "$ADDITIONAL_FLAGS" ]]
+#NOTICE: this does not clean command in the form --<arg>=<something>, 
+#        such as --remote-dir=...; those need to handled below.
+#NOTICE: ARGS will be augments with all the SCRIPT_ARGS in ADDITIONAL_FLAGS; 
+#        if SCRIPT_ARGS options are passed in the command line, then they are already
+#        in ARGS (ARGS=$@) and there will be duplicates. This is no problem.
+#        The point of this loop is to pass the SCRIPT_ARGS collected from 
+#        rsync.arguments to ARGS (and to clean ADDITIONAL_FLAGS of them).
+for i in $SCRIPT_ARGS
+do
+  if [[ ! "${ADDITIONAL_FLAGS//$i/}" == "$ADDITIONAL_FLAGS" ]]
+  then
+    ADDITIONAL_FLAGS=${ADDITIONAL_FLAGS//$i/}
+    ARGS="$ARGS $i"
+  fi
+done
+
+# ------------- remote dir option -------------
+
+if [[ ! "${ARGS//--remote-dir=/}" == "$ARGS" ]]
 then
-    for i in $ADDITIONAL_FLAGS
-    do
-        if [[ ! "${i//--remote-dir=/}" == "$i" ]]
-        then
-            #xargs trimmes the DIR_REMOTE value
-            DIR_REMOTE="$(echo ${i/--remote-dir=/} | xargs)"
-            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR_REMOTE/}"
-            ARGS="$ARGS --remote-dir=$DIR_REMOTE"
-            break
-        fi
-    done
+  for i in $ARGS
+  do
+    if [[ ! "${i//--remote-dir=/}" == "$i" ]]
+    then
+      #xargs trimmes the DIR_REMOTE value
+      DIR_REMOTE="$(echo ${i/--remote-dir=/} | xargs)"
+      ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR_REMOTE/}"
+      ARGS="$ARGS --remote-dir=$DIR_REMOTE"
+      break
+    fi
+  done
 else
-    #editing the remote dir (no need to escape the / character of the replacing string, apparently)
-    DIR_REMOTE="${DIR_SOURCE/\/home\/$USER\///home/$USER_REMOTE/}"
-    DIR_REMOTE="${DIR_SOURCE/\/Users\/$USER\///Users/$USER_REMOTE/}"
+  #editing the remote dir (no need to escape the / character of the replacing string, apparently)
+  DIR_REMOTE="${DIR_SOURCE/\/home\/$USER\///home/$USER_REMOTE/}"
+  DIR_REMOTE="${DIR_SOURCE/\/Users\/$USER\///Users/$USER_REMOTE/}"
 fi
 
 # # ------------- pre-run command -------------
 
-if [[ ! "${ADDITIONAL_FLAGS//--pre-run=/}" == "$ARGS" ]]
+if [[ ! "${ARGS//--pre-run=/}" == "$ARGS" ]]
 then
-    for i in "$ADDITIONAL_FLAGS"
-    do
-        if [[ ! "${i//--pre-run=/}" == "$i" ]]
-        then
-            if [[ "${i//\'/}" == "$i" ]]
-            then
-                echo "ERROR: the command --pre-run='command' must use single quotes explicitly."
-                exit 3
-            fi
-            #xargs trimmes the PRE_RUN_COM value
-            PRE_RUN_COM="$(echo ${i/--pre-run=/} | xargs)"
-            ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--pre-run=\'$PRE_RUN_COM\'/}"
-            ARGS="$ARGS --pre-run=$PRE_RUN_COM"
-            #execute the requested command
-            echo "executing pre-run command '$PRE_RUN_COM':"
-            $PRE_RUN_COM || exit $?
-            break
-            exit
-        fi
-    done
+  for i in "$ARGS"
+  do
+    if [[ ! "${i//--pre-run=/}" == "$i" ]]
+    then
+      if [[ "${i//\'/}" == "$i" ]]
+      then
+        echo "ERROR: the command --pre-run='command' must use single quotes explicitly."
+        exit 3
+      fi
+      #xargs trimmes the PRE_RUN_COM value
+      PRE_RUN_COM="$(echo ${i/--pre-run=/} | xargs)"
+      ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--pre-run=\'$PRE_RUN_COM\'/}"
+      ARGS="$ARGS --pre-run=$PRE_RUN_COM"
+      #execute the requested command
+      echo "executing pre-run command '$PRE_RUN_COM':"
+      $PRE_RUN_COM || exit $?
+      break
+      exit
+    fi
+  done
 fi
+
+# ------------- it's now safe to use variables instead of functions -------------
+
+show-feedback && SHOW_FEEDBACK=true || SHOW_FEEDBACK=false
+be-verbose    && BE_VERBOSE=true    || BE_VERBOSE=false
+remote2local  && REMOTE2LOCAL=true  || REMOTE2LOCAL=false
+local2remote  && LOCAL2REMOTE=true  || LOCAL2REMOTE=false
 
 # ------------- keyfile -------------
 
 SSH_KEY_FILE=$HOME/.ssh/$USER_REMOTE@${COMPUTER_REMOTE%%.*}
-[[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Looking for key file $SSH_KEY_FILE"
+$SHOW_FEEDBACK && echo "Looking for key file $SSH_KEY_FILE"
 if [ ! -e "$SSH_KEY_FILE" ]
 then
-    SSH_KEY_FILE=none
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
+  SSH_KEY_FILE=none
+  $SHOW_FEEDBACK && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
 else
-    [ -z "$SSH_AUTH_SOCK" ] && eval $(ssh-agent -s)
-    ssh-add -t 60 $SSH_KEY_FILE
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Using keyfile $SSH_KEY_FILE"
+  [ -z "$SSH_AUTH_SOCK" ] && eval $(ssh-agent -s)
+  ssh-add -t 60 $SSH_KEY_FILE
+  $SHOW_FEEDBACK && echo "Using keyfile $SSH_KEY_FILE"
 fi
 
 # ------------- exclude file -------------
 
-if [ -e "$DIR_SOURCE/rsync.exclude" ]
+if [ -e "$DIR_SOURCE/rsync.exclude" ] && \
+  [[ "${ARGS//--no-exclude-file/}" == "$ARGS" ]]
 then
-    EXCLUDE="--exclude-from=$DIR_SOURCE/rsync.exclude"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using exclude file $DIR_SOURCE/rsync.exclude:\n`cat "$DIR_SOURCE/rsync.exclude"`\n"
+  EXCLUDE="--exclude-from=$DIR_SOURCE/rsync.exclude"
+  if $SHOW_FEEDBACK
+  then 
+    echo -n "Exclude file      : $DIR_SOURCE/rsync.exclude"
+    $BE_VERBOSE \
+      && echo -e ":\n$(cat "$DIR_SOURCE/rsync.exclude")" \
+      || echo " ($(printf '%d' $(cat "$DIR_SOURCE/rsync.exclude" | wc -l)) lines)"
+  fi
 else
-    EXCLUDE=""
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any exclude file."
+  EXCLUDE=""
+  $SHOW_FEEDBACK && echo "Exclude file      : none"
 fi
 
 # ------------- include file -------------
 
-if [ -e "$DIR_SOURCE/rsync.include" ]
+if [ -e "$DIR_SOURCE/rsync.include" ] && \
+  [[ "${ARGS//--no-include-file/}" == "$ARGS" ]]
 then
-    INCLUDE="--include-from=$DIR_SOURCE/rsync.include"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo -e "Using include file $DIR_SOURCE/rsync.include:\n`cat "$DIR_SOURCE/rsync.include"`\n"
+  INCLUDE="--include-from=$DIR_SOURCE/rsync.include"
+  if $SHOW_FEEDBACK
+  then
+    echo -n "Include file      : $DIR_SOURCE/rsync.include"
+    $BE_VERBOSE \
+      && echo -e ":\n$(cat "$DIR_SOURCE/rsync.include")" \
+      || echo " ($(printf '%d' $(cat "$DIR_SOURCE/rsync.include" | wc -l)) lines)"
+  fi
 else
-    INCLUDE=""
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Not using any include file."
+  INCLUDE=""
+  $SHOW_FEEDBACK && echo "Include file      : none"
 fi
 
 # ------------- backup deleted files -------------
 
 if [[ ! "${ARGS//--backup-deleted/}" == "$ARGS" ]]
 then
-    DATE=
-    machine_is Darwin && DATE=$(date "+%Y-%m-%d")
-    if [ -z "$DATE" ]
-    then
-        echo "BUG TRAP: need implementation of date for this machine"
-        exit 3
-    fi
-    ADDITIONAL_FLAGS+=" --delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
+  DATE=
+  machine_is Darwin && DATE=$(date "+%Y-%m-%d")
+  if [ -z "$DATE" ]
+  then
+    echo "BUG TRAP: need implementation of date for this machine"
+    exit 3
+  fi
+  ADDITIONAL_FLAGS+=" --delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
 fi
 
 # ------------- get rid of default flags -------------
@@ -346,67 +391,67 @@ fi
 #need to remove sparse if inplace if given
 if [[ ! "${ADDITIONAL_FLAGS//--inplace/}" == "$ADDITIONAL_FLAGS" ]]
 then
-    DEFAULT_FLAGS="${DEFAULT_FLAGS//--sparse/}"
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Removed --sparse because --inplace was given."
+  DEFAULT_FLAGS="${DEFAULT_FLAGS//--sparse/}"
+  $SHOW_FEEDBACK && echo "Removed --sparse because --inplace was given."
 fi
 
 # ------------- singularities -------------
 
 if [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]]
 then
-    # translation origin: USER_REMOTE is used here because it was already replaced above
-    case "`hostname -f`" in
-        "tud14231"|"csr-875717.csr.utexas.edu")
-            #inverse translation of Darwin homes
-            FROM="/Users/$USER_REMOTE"
-        ;;
-        "srv227.tudelft.net" )
-            FROM="/home/nfs/$USER_REMOTE"
-        ;;
-        *.ls5.tacc.utexas.edu)
-            FROM="/home1/00767/$USER_REMOTE"
-        ;;
-        *.corral.tacc.utexas.edu)
-            FROM="/home/utexas/csr/$USER_REMOTE"
-        ;;
-        *)
-            FROM="/home/$USER_REMOTE"
-        ;;
-    esac
-    # translation destiny
-    case "$COMPUTER_REMOTE" in
-        "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029"|"csr-875717.csr.utexas.edu" )
-            #translation of Darwin homes
-            TO="/Users/$USER_REMOTE"
-        ;;
-        "linux-bastion.tudelft.nl" )
-            TO="/home/nfs/$USER_REMOTE"
-        ;;
-        *.ls5.tacc.utexas.edu|"stampede2.tacc.utexas.edu")
-            which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
-            TO="/home1/00767/$USER_REMOTE"
-        ;;
-        "corral.tacc.utexas.edu"|"wrangler.tacc.utexas.edu")
-            which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
-            TO="/home/$USER_REMOTE"
-        ;;
-        * )
-            TO="/home/$USER_REMOTE"
-        ;;
-    esac
-    # echo FROM=$FROM
-    # echo TO=$TO
-    # echo "DIR_REMOTE=$DIR_REMOTE (before translating)"
-    #translate
-    DIR_REMOTE="${DIR_REMOTE/$FROM/$TO}"
-    # echo "DIR_REMOTE=$DIR_REMOTE (after translating)"
+  # translation origin: USER_REMOTE is used here because it was already replaced above
+  case "`hostname -f`" in
+    "tud14231"|"csr-875717.csr.utexas.edu")
+      #inverse translation of Darwin homes
+      FROM="/Users/$USER_REMOTE"
+    ;;
+    "srv227.tudelft.net" )
+      FROM="/home/nfs/$USER_REMOTE"
+    ;;
+    *.ls5.tacc.utexas.edu)
+      FROM="/home1/00767/$USER_REMOTE"
+    ;;
+    *.corral.tacc.utexas.edu)
+      FROM="/home/utexas/csr/$USER_REMOTE"
+    ;;
+    *)
+      FROM="/home/$USER_REMOTE"
+    ;;
+  esac
+  # translation destiny
+  case "$COMPUTER_REMOTE" in
+    "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029"|"csr-875717.csr.utexas.edu" )
+      #translation of Darwin homes
+      TO="/Users/$USER_REMOTE"
+    ;;
+    "linux-bastion.tudelft.nl" )
+      TO="/home/nfs/$USER_REMOTE"
+    ;;
+    *.ls5.tacc.utexas.edu|"stampede2.tacc.utexas.edu")
+      which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
+      TO="/home1/00767/$USER_REMOTE"
+    ;;
+    "corral.tacc.utexas.edu"|"wrangler.tacc.utexas.edu")
+      which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
+      TO="/home/$USER_REMOTE"
+    ;;
+    * )
+      TO="/home/$USER_REMOTE"
+    ;;
+  esac
+  # echo FROM=$FROM
+  # echo TO=$TO
+  # echo "DIR_REMOTE=$DIR_REMOTE (before translating)"
+  #translate
+  DIR_REMOTE="${DIR_REMOTE/$FROM/$TO}"
+  # echo "DIR_REMOTE=$DIR_REMOTE (after translating)"
 
 fi
 
 
 # # ------------- pinging remote host -------------
 
-# if [[ "${ARGS//--no-feedback/}" == "$ARGS" ]]
+# if $SHOW_FEEDBACK
 # then
 #     ping -c 1 $COMPUTER_REMOTE || exit 3
 # else
@@ -415,56 +460,67 @@ fi
 
 # ------------- update flag -------------
 
-if [ remote2local ] || [ local2remote ]; then
-    [[ "${ADDITIONAL_FLAGS//--update/}" == "$ADDITIONAL_FLAGS" ]] && ADDITIONAL_FLAGS+=" --update"
+if $REMOTE2LOCAL || $LOCAL2REMOTE; then
+  [[ "${ADDITIONAL_FLAGS//--update/}" == "$ADDITIONAL_FLAGS" ]] && ADDITIONAL_FLAGS+=" --update"
 fi
 
 # ------------- feedback -------------
 
-if [[ "${ARGS//--no-feedback/}" == "$ARGS" ]]
+if $SHOW_FEEDBACK
 then
-    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --progress --human-readable"
-    echo "Default    flags are $DEFAULT_FLAGS"
-    echo "Additional flags are $ADDITIONAL_FLAGS"
-    echo "Remote computer is $COMPUTER_REMOTE; remote user is $USER_REMOTE; local user is $USER"
-    echo "Remote dir is $DIR_REMOTE; local dir is $DIR_SOURCE"
-    ! local2remote && echo "Not synching local to remote"
-    ! remote2local && echo "Not synching remote to local"
+  $BE_VERBOSE \
+    && ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --progress --human-readable" \
+    || ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --itemize-changes"
+  $BE_VERBOSE && echo "Default flags     : $DEFAULT_FLAGS"
+  echo "Additional flags  : $ADDITIONAL_FLAGS"
+  echo "Remote dir        : $DIR_REMOTE"
+  echo "Local dir         : $DIR_SOURCE"
+  if $LOCAL2REMOTE && $REMOTE2LOCAL
+  then
+    echo "Directional sync  : local -> remote -> local"
+  elif $LOCAL2REMOTE 
+  then
+    echo "Directional sync  : local -> remote"
+  elif $REMOTE2LOCAL
+  then
+    echo "Directional sync  : remote -> local"
+  else
+    echo "Directional sync  : none (pointless to have both --not-local2remote and --not-remote2local)"
+  fi
+  echo "====================================================================="
 else
-    #at least show me the changes
-    ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --itemize-changes"
+  #at least show me the changes
+  ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --itemize-changes"
 fi
 
 # ------------- user in the loop? -------------
 
 if [[ "${ARGS//--no-confirmation/}" == "$ARGS" ]]
 then
-    echo "Continue [Y/n] ?"
-    read ANSWER
-    if [ "$ANSWER" == "N" ] || [ "$ANSWER" == "n" ]
-    then
-        exit
-    fi
+  echo "Continue [Y/n] ?"
+  read ANSWER
+  if [ "$ANSWER" == "N" ] || [ "$ANSWER" == "n" ]
+  then
+    exit
+  fi
 fi
 
 # ------------- local to remote -------------
 
-if local2remote
+if $LOCAL2REMOTE
 then
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching local -> remote"
-    $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
-      $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
-      "$DIR_SOURCE/" $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/
+  $SHOW_FEEDBACK && echo "Synching $DIR_SOURCE -> $DIR_REMOTE"
+  $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
+    $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
+    "$DIR_SOURCE/" $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/
 fi
 
 # ------------- remote to local -------------
 
-if remote2local
+if $REMOTE2LOCAL
 then
-    [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && echo "Synching remote -> local"
-    $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
-        $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
-        $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$DIR_SOURCE/"
+  $SHOW_FEEDBACK && echo "Synching $DIR_REMOTE -> $DIR_SOURCE"
+  $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
+    $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
+    $USER_REMOTE@$COMPUTER_REMOTE:$DIR_REMOTE/ "$DIR_SOURCE/"
 fi
-
-
