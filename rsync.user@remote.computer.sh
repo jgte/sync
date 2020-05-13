@@ -249,8 +249,8 @@ fi
 # ------------- clean script-specific arguments -------------
 
 #NOTICE: this does not clean command in the form --<arg>=<something>, 
-#        such as --remote-dir=...; those need to handled below.
-#NOTICE: ARGS will be augments with all the SCRIPT_ARGS in ADDITIONAL_FLAGS; 
+#        such as --remote-dir=...; those need to handled below, using ADDITIONAL_FLAGS
+#NOTICE: ARGS will be augmented with all the SCRIPT_ARGS in ADDITIONAL_FLAGS; 
 #        if SCRIPT_ARGS options are passed in the command line, then they are already
 #        in ARGS (ARGS=$@) and there will be duplicates. This is no problem.
 #        The point of this loop is to pass the SCRIPT_ARGS collected from 
@@ -266,9 +266,9 @@ done
 
 # ------------- remote dir option -------------
 
-if [[ ! "${ARGS//--remote-dir=/}" == "$ARGS" ]]
+if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "$ADDITIONAL_FLAGS" ]]
 then
-  for i in $ARGS
+  for i in $ADDITIONAL_FLAGS
   do
     if [[ ! "${i//--remote-dir=/}" == "$i" ]]
     then
@@ -287,9 +287,9 @@ fi
 
 # # ------------- pre-run command -------------
 
-if [[ ! "${ARGS//--pre-run=/}" == "$ARGS" ]]
+if [[ ! "${ADDITIONAL_FLAGS//--pre-run=/}" == "$ADDITIONAL_FLAGS" ]]
 then
-  for i in "$ARGS"
+  for i in "$ADDITIONAL_FLAGS"
   do
     if [[ ! "${i//--pre-run=/}" == "$i" ]]
     then
