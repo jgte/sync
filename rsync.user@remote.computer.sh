@@ -450,13 +450,13 @@ then
     "linux-bastion.tudelft.nl" )
       TO="/home/nfs/$USER_REMOTE"
     ;;
-    *.ls5.tacc.utexas.edu|"stampede2.tacc.utexas.edu")
-      which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
-      TO="/home1/00767/$USER_REMOTE"
-    ;;
     "corral.tacc.utexas.edu"|"wrangler.tacc.utexas.edu")
       which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
       TO="/home/$USER_REMOTE"
+    ;;
+    *.tacc.utexas.edu)
+      which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
+      TO="/home1/00767/$USER_REMOTE"
     ;;
     * )
       TO="/home/$USER_REMOTE"
