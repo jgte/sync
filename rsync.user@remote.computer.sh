@@ -270,8 +270,8 @@ fi
 # ------------- clean script-specific arguments -------------
 
 #NOTICE: this does not clean command in the form --<arg>=<something>, 
-#        such as --remote-dir=...; those need to handled below, using ADDITIONAL_FLAGS
-#NOTICE: ARGS will be augmented with all the SCRIPT_ARGS in ADDITIONAL_FLAGS; 
+#        such as --remote-dir=...; those need to handled below.
+#NOTICE: ARGS will be augments with all the SCRIPT_ARGS in ADDITIONAL_FLAGS; 
 #        if SCRIPT_ARGS options are passed in the command line, then they are already
 #        in ARGS (ARGS=$@) and there will be duplicates. This is no problem.
 #        The point of this loop is to pass the SCRIPT_ARGS collected from 
