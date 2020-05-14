@@ -199,7 +199,7 @@ function user_remote(){
   local DEBUG_HERE=false
   $DEBUG_HERE && echo "0:$1" 1>&2
   #get remote computer
-  USER_REMOTE=$(strip_file_accessories $1)
+  local USER_REMOTE=$(strip_file_accessories $1)
   $DEBUG_HERE && echo "1:$USER_REMOTE" 1>&2
   #check if the @ character is there
   if [[ ! "${USER_REMOTE/\@}" == "$USER_REMOTE" ]]
