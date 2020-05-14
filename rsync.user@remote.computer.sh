@@ -222,21 +222,42 @@ USER_REMOTE=$(user_remote $0)
 #this is useful when run from crontab and the USER_REMOTE is set
 USER=${USER:-$USER_REMOTE}
 
-# ------------- argument file -------------
+# ------------- handle files with rsync options -------------
 
-if [ -e "$DIR_SOURCE/rsync.arguments" ] && \
+#resolve existing rsync.*{exclude|include|arguments} file
+function get-rsync-file()
+{
+  local TYPE=$1
+  for i in \
+    "$DIR_SOURCE/rsync.$USER_REMOTE@$COMPUTER_REMOTE.$1" \
+    "$DIR_SOURCE/rsync.$COMPUTER_REMOTE.$1" \
+    "$DIR_SOURCE/rsync.$1"
+  do
+    echo "i=$i" 1>&2
+    if [ -e "$i" ]
+    then
+      echo "$i"
+    fi
+  done
+  echo ""
+}
+
+# ------------- arguments file -------------
+
+ARGUMENTS_FILE="$(get-rsync-file arguments)"
+if [ ! -z "$ARGUMENTS_FILE" ] && \
   [[ "${ARGS//--no-arguments-file/}" == "$ARGS" ]]
 then
-  if [ `cat "$DIR_SOURCE/rsync.arguments" | wc -l` -gt 1 ]
+  if [ $(cat "$ARGUMENTS_FILE" | wc -l) -gt 1 ]
   then
     echo "ERROR: file $DIR_SOURCE/rsync.arguments cannot have more than one line."
     exit 3
   fi
-  ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS `cat "$DIR_SOURCE/rsync.arguments"`"
+  ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS $(cat "$ARGUMENTS_FILE")"
   if show-feedback
   then
     echo "====================================================================="
-    echo "File arguments    : $(cat $DIR_SOURCE/rsync.arguments)"
+    echo "File arguments    : $(cat $ARGUMENTS_FILE)"
   fi
 else
   if show-feedback
@@ -334,16 +355,17 @@ fi
 
 # ------------- exclude file -------------
 
-if [ -e "$DIR_SOURCE/rsync.exclude" ] && \
+EXCLUDE_FILE="$(get-rsync-file exclude)"
+if [ ! -z "$EXCLUDE_FILE" ] && \
   [[ "${ARGS//--no-exclude-file/}" == "$ARGS" ]]
 then
-  EXCLUDE="--exclude-from=$DIR_SOURCE/rsync.exclude"
+  EXCLUDE="--exclude-from=$EXCLUDE_FILE"
   if $SHOW_FEEDBACK
   then 
-    echo -n "Exclude file      : $DIR_SOURCE/rsync.exclude"
+    echo -n "Exclude file      : $EXCLUDE_FILE"
     $BE_VERBOSE \
-      && echo -e ":\n$(cat "$DIR_SOURCE/rsync.exclude")" \
-      || echo " ($(printf '%d' $(cat "$DIR_SOURCE/rsync.exclude" | wc -l)) lines)"
+      && echo -e ":\n$(cat "$EXCLUDE_FILE")" \
+      || echo " ($(printf '%d' $(cat "$EXCLUDE_FILE" | wc -l)) lines)"
   fi
 else
   EXCLUDE=""
@@ -352,16 +374,17 @@ fi
 
 # ------------- include file -------------
 
-if [ -e "$DIR_SOURCE/rsync.include" ] && \
+INCLUDE_FILE="$(get-rsync-file include)"
+if [ ! -z "$INCLUDE_FILE" ] && \
   [[ "${ARGS//--no-include-file/}" == "$ARGS" ]]
 then
-  INCLUDE="--include-from=$DIR_SOURCE/rsync.include"
+  INCLUDE="--include-from=$INCLUDE_FILE"
   if $SHOW_FEEDBACK
   then
-    echo -n "Include file      : $DIR_SOURCE/rsync.include"
+    echo -n "Include file      : $INCLUDE_FILE"
     $BE_VERBOSE \
-      && echo -e ":\n$(cat "$DIR_SOURCE/rsync.include")" \
-      || echo " ($(printf '%d' $(cat "$DIR_SOURCE/rsync.include" | wc -l)) lines)"
+      && echo -e ":\n$(cat "$INCLUDE_FILE")" \
+      || echo " ($(printf '%d' $(cat "$INCLUDE_FILE" | wc -l)) lines)"
   fi
 else
   INCLUDE=""
