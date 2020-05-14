@@ -239,9 +239,9 @@ done
 
 # ------------- remote dir option -------------
 
-if [[ ! "${ARGS//--remote-dir=/}" == "$ARGS" ]]
+if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "$ADDITIONAL_FLAGS" ]]
 then
-  for i in $ARGS
+  for i in $ADDITIONAL_FLAGS
   do
     if [[ ! "${i//--remote-dir=/}" == "$i" ]]
     then
