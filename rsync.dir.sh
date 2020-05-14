@@ -185,7 +185,6 @@ function get-rsync-file()
     "$DIR_SOURCE/rsync.$COMPUTER_REMOTE.$1" \
     "$DIR_SOURCE/rsync.$1"
   do
-    echo "i=$i" 1>&2
     if [ -e "$i" ]
     then
       echo "$i"
