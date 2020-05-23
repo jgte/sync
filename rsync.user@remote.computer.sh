@@ -285,51 +285,46 @@ do
   fi
 done
 
-# ------------- remote dir option -------------
+# ------------- --<name>= options -------------
 
-if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "$ADDITIONAL_FLAGS" ]]
+for arg in --remote-dir= --remote-user= --remote-computer= --pre-run=
+do
+  if [[ ! "${ADDITIONAL_FLAGS//$arg}" == "$ADDITIONAL_FLAGS" ]]
+  then
+    for i in $ADDITIONAL_FLAGS
+    do
+      if [[ ! "${i//$arg}" == "$i" ]]
+      then
+        #xargs trimms the values
+        V="$(echo ${i/$arg} | xargs)"
+        #distribute value where it's supposed to go
+        case $arg in
+          --remote-user=)         USER_REMOTE=$V ;;
+          --remote-computer=) COMPUTER_REMOTE=$V ;;
+          --remote-dir=)           DIR_REMOTE=$V ;;
+          --pre-run=)
+            #execute the requested command
+            echo "executing pre-run command '$V':"
+            $V || exit $?
+          ;;
+        esac
+        #trim additional flags
+        ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//$arg$V/}"
+        #append to args
+        ARGS="$ARGS $arg$V"
+        break
+      fi
+    done
+  fi
+done
+
+# ------------- if remote dir is not given explicitly, defaul to user's home -------------
+
+if [ -z "${DIR_REMOTE-}" ]
 then
-  for i in $ADDITIONAL_FLAGS
-  do
-    if [[ ! "${i//--remote-dir=/}" == "$i" ]]
-    then
-      #xargs trimmes the DIR_REMOTE value
-      DIR_REMOTE="$(echo ${i/--remote-dir=/} | xargs)"
-      ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR_REMOTE/}"
-      ARGS="$ARGS --remote-dir=$DIR_REMOTE"
-      break
-    fi
-  done
-else
   #editing the remote dir (no need to escape the / character of the replacing string, apparently)
   DIR_REMOTE="${DIR_SOURCE/\/home\/$USER\///home/$USER_REMOTE/}"
   DIR_REMOTE="${DIR_SOURCE/\/Users\/$USER\///Users/$USER_REMOTE/}"
-fi
-
-# # ------------- pre-run command -------------
-
-if [[ ! "${ADDITIONAL_FLAGS//--pre-run=/}" == "$ADDITIONAL_FLAGS" ]]
-then
-  for i in "$ADDITIONAL_FLAGS"
-  do
-    if [[ ! "${i//--pre-run=/}" == "$i" ]]
-    then
-      if [[ "${i//\'/}" == "$i" ]]
-      then
-        echo "ERROR: the command --pre-run='command' must use single quotes explicitly."
-        exit 3
-      fi
-      #xargs trimmes the PRE_RUN_COM value
-      PRE_RUN_COM="$(echo ${i/--pre-run=/} | xargs)"
-      ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--pre-run=\'$PRE_RUN_COM\'/}"
-      ARGS="$ARGS --pre-run=$PRE_RUN_COM"
-      #execute the requested command
-      echo "executing pre-run command '$PRE_RUN_COM':"
-      $PRE_RUN_COM || exit $?
-      break
-      exit
-    fi
-  done
 fi
 
 # ------------- it's now safe to use variables instead of functions -------------

@@ -236,22 +236,38 @@ do
   fi
 done
 
-# ------------- remote dir option -------------
+# ------------- --<name>= options -------------
 
-if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "$ADDITIONAL_FLAGS" ]]
-then
-  for i in $ADDITIONAL_FLAGS
-  do
-    if [[ ! "${i//--remote-dir=/}" == "$i" ]]
-    then
-      #xargs trimmes the DIR_REMOTE value
-      DIR_REMOTE="$(echo ${i/--remote-dir=/} | xargs)"
-      ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//--remote-dir=$DIR_REMOTE/}"
-      ARGS="$ARGS --remote-dir=$DIR_REMOTE"
-      break
-    fi
-  done
-fi
+for arg in --remote-dir= #--remote-user= --remote-computer= --pre-run=
+do
+  if [[ ! "${ADDITIONAL_FLAGS//$arg}" == "$ADDITIONAL_FLAGS" ]]
+  then
+    for i in $ADDITIONAL_FLAGS
+    do
+      if [[ ! "${i//$arg}" == "$i" ]]
+      then
+        #xargs trimms the values
+        V="$(echo ${i/$arg} | xargs)"
+        #distribute value where it's supposed to go
+        case $arg in
+          # --remote-user=)         USER_REMOTE=$V ;;
+          # --remote-computer=) COMPUTER_REMOTE=$V ;;
+          # --remote-dir=)           DIR_REMOTE=$V ;;
+          --pre-run=)
+            #execute the requested command
+            echo "executing pre-run command '$V':"
+            $V || exit $?
+          ;;
+        esac
+        #trim additional flags
+        ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//$arg$V/}"
+        #append to args
+        ARGS="$ARGS $arg$V"
+        break
+      fi
+    done
+  fi
+done
 
 # ------------- it's now safe to use variables instead of functions -------------
 
