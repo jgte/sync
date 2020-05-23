@@ -173,6 +173,7 @@ function strip_file_accessories(){
 
 DIR_REMOTE=$(strip_file_accessories $0)
 DIR_REMOTE=$HOME/${DIR_REMOTE//\:/\/}
+DIR_REMOTE_FILE=$DIR_REMOTE
 
 # ------------- handle files with rsync options -------------
 
@@ -181,6 +182,7 @@ function get-rsync-file()
 {
   local TYPE=$1
   for i in \
+    "$DIR_SOURCE/rsync.$DIR_REMOTE_FILE.$1" \
     "$DIR_SOURCE/rsync.$DIR_REMOTE.$1" \
     "$DIR_SOURCE/rsync.$1"
   do
