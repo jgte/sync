@@ -236,6 +236,7 @@ function get-rsync-file()
     if [ -e "$i" ]
     then
       echo "$i"
+      return
     fi
   done
   echo ""
