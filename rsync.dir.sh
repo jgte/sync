@@ -181,8 +181,7 @@ function get-rsync-file()
 {
   local TYPE=$1
   for i in \
-    "$DIR_SOURCE/rsync.$USER_REMOTE@$COMPUTER_REMOTE.$1" \
-    "$DIR_SOURCE/rsync.$COMPUTER_REMOTE.$1" \
+    "$DIR_SOURCE/rsync.$DIR_REMOTE.$1" \
     "$DIR_SOURCE/rsync.$1"
   do
     if [ -e "$i" ]
