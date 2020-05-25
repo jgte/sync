@@ -242,11 +242,11 @@ done
 
 for arg in --remote-dir= #--remote-user= --remote-computer= --pre-run=
 do
-  if [[ ! "${ADDITIONAL_FLAGS//$arg}" == "$ADDITIONAL_FLAGS" ]]
+  if [[ ! "${ADDITIONAL_FLAGS/$arg}" == "$ADDITIONAL_FLAGS" ]]
   then
     for i in $ADDITIONAL_FLAGS
     do
-      if [[ ! "${i//$arg}" == "$i" ]]
+      if [[ ! "${i/$arg}" == "$i" ]]
       then
         #xargs trimms the values
         V="$(echo ${i/$arg} | xargs)"
@@ -254,7 +254,7 @@ do
         case $arg in
           # --remote-user=)         USER_REMOTE=$V ;;
           # --remote-computer=) COMPUTER_REMOTE=$V ;;
-          # --remote-dir=)           DIR_REMOTE=$V ;;
+          --remote-dir=)           DIR_REMOTE=$V ;;
           --pre-run=)
             #execute the requested command
             echo "executing pre-run command '$V':"
