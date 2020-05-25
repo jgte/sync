@@ -352,6 +352,31 @@ else
   $SHOW_FEEDBACK && echo "Using keyfile $SSH_KEY_FILE"
 fi
 
+# ------------- include .git dirs when --delete is given -------------
+
+function ensure_file()
+{
+  [ -e "$1" ] || touch "$1"
+}
+
+#make sure rsync.include exists
+ensure_file "$LOCAL/rsync.include"
+if [[ "${ARGS/--delete}" == "$ARGS" ]]
+then
+  if [ -e "$LOCAL/rsync.include" ] && grep -q '.git*' "$LOCAL/rsync.include"
+  then
+    echo "NOTICE: to sync .git, need the --delete flag, otherwise .git dirs are ignored."
+    grep -v '.git' "$LOCAL/rsync.include" > /tmp/rsync.include.$$ || true
+    mv -f /tmp/rsync.include.$$ "$LOCAL/rsync.include"
+  fi
+else
+  if [ -e "$LOCAL/rsync.include" ] && ! grep -q '.git*' "$LOCAL/rsync.include"
+  then
+    echo "NOTICE: not ignoring .git, since the --delete flag was given."
+    echo '.git*' >> "$LOCAL/rsync.include"
+  fi
+fi
+
 # ------------- exclude file -------------
 
 EXCLUDE_FILE="$(get-rsync-file exclude)"
