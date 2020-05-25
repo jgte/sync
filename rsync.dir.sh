@@ -287,21 +287,22 @@ function ensure_file()
 
 GITSYNC=false
 #make sure rsync.include exists
-ensure_file "$DIR_SOURCE/rsync.include"
+INCLUDE_FILE="$(get-rsync-file include)"
+ensure_file "$INCLUDE_FILE"
 if [[ "${ADDITIONAL_FLAGS/--delete}" == "$ADDITIONAL_FLAGS" ]]
 then
-  if grep -q '.git*' "$DIR_SOURCE/rsync.include"
+  if grep -q '.git*' "$INCLUDE_FILE"
   then
     $SHOW_FEEDBACK && echo "NOTICE: to sync .git, need the --delete flag, otherwise .git dirs are ignored."
-    grep -v '.git' "$DIR_SOURCE/rsync.include" > /tmp/rsync.include.$$ || true
-    mv -f /tmp/rsync.include.$$ "$DIR_SOURCE/rsync.include"
+    grep -v '.git' "$INCLUDE_FILE" > /tmp/rsync.include.$$ || true
+    mv -f /tmp/rsync.include.$$ "$INCLUDE_FILE"
   fi
 else
   GITSYNC=true
-  if ! grep -q '.git*' "$DIR_SOURCE/rsync.include"
+  if ! grep -q '.git*' "$INCLUDE_FILE"
   then
     $SHOW_FEEDBACK && echo "NOTICE: not ignoring .git, since the --delete flag was given."
-    echo '.git*' >> "$DIR_SOURCE/rsync.include"
+    echo '.git*' >> "$INCLUDE_FILE"
   fi
 fi
 
