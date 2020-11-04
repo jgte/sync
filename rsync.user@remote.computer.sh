@@ -60,7 +60,7 @@
 #                 - the creation of a directory
 #                 - the changing of a symlink,
 #                 - etc.
-#              h: the item is a hard link to another item (requires 
+#              h: the item is a hard link to another item (requires
 #                 --hard-links).
 #              .: the item is not being updated (though it might have
 #                 attributes that are being modified)
@@ -100,10 +100,10 @@ LOG=${LOG// /_}
 DEFAULT_FLAGS=" --recursive --times --omit-dir-times --links --no-group"
 #this makes sense between different machines
 DEFAULT_FLAGS+=" --no-perms --chmod=ugo=rwX"
-#skip files that are newer on the receiver 
+#skip files that are newer on the receiver
 #NOTICE: this can be dangerous when mirroring, since touching a file at destination will prevent it from being updated
 #        for this reason, --update is added to ADDITIONAL_FLAGS whenever --not-local2remote or --not-remote2local are used
-# DEFAULT_FLAGS+=" --update" 
+# DEFAULT_FLAGS+=" --update"
 DEFAULT_FLAGS+=" --exclude=.DS_Store"
 DEFAULT_FLAGS+=" --exclude=._*"
 DEFAULT_FLAGS+=" --exclude=*.o"
@@ -188,7 +188,7 @@ function strip_file_accessories(){
 function computer_remote(){
   local COMPUTER_REMOTE=$(strip_file_accessories $1)
   COMPUTER_REMOTE=${COMPUTER_REMOTE#*@}
-  echo $COMPUTER_REMOTE    
+  echo $COMPUTER_REMOTE
 }
 
 COMPUTER_REMOTE=$(computer_remote $0)
@@ -273,12 +273,12 @@ fi
 
 # ------------- clean script-specific arguments -------------
 
-#NOTICE: this does not clean command in the form --<arg>=<something>, 
+#NOTICE: this does not clean command in the form --<arg>=<something>,
 #        such as --remote-dir=...; those need to handled below.
-#NOTICE: ARGS will be augments with all the SCRIPT_ARGS in ADDITIONAL_FLAGS; 
+#NOTICE: ARGS will be augments with all the SCRIPT_ARGS in ADDITIONAL_FLAGS;
 #        if SCRIPT_ARGS options are passed in the command line, then they are already
 #        in ARGS (ARGS=$@) and there will be duplicates. This is no problem.
-#        The point of this loop is to pass the SCRIPT_ARGS collected from 
+#        The point of this loop is to pass the SCRIPT_ARGS collected from
 #        rsync.arguments to ARGS (and to clean ADDITIONAL_FLAGS of them).
 for i in $SCRIPT_ARGS
 do
@@ -385,7 +385,7 @@ if [ ! -z "$EXCLUDE_FILE" ] && \
 then
   EXCLUDE="--exclude-from=$EXCLUDE_FILE"
   if $SHOW_FEEDBACK
-  then 
+  then
     echo -n "Exclude file      : $EXCLUDE_FILE"
     $BE_VERBOSE \
       && echo -e ":\n$(cat "$EXCLUDE_FILE")" \
@@ -448,7 +448,7 @@ if [[ "${ARGS//--remote-dir=.*/}" == "$ARGS" ]]
 then
   # translation origin: USER_REMOTE is used here because it was already replaced above
   case "`hostname -f`" in
-    "tud14231"|"csr-875717.csr.utexas.edu")
+    "tud14231"|"TUD500415")
       #inverse translation of Darwin homes
       FROM="/Users/$USER_REMOTE"
     ;;
@@ -467,7 +467,7 @@ then
   esac
   # translation destiny
   case "$COMPUTER_REMOTE" in
-    "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029"|"csr-875717.csr.utexas.edu" )
+    "jgte-mac.no-ip.org"|"holanda.no-ip.org:20022"|"holanda.no-ip.org:20024"|"holanda.no-ip.org:20029"|"TUD500415" )
       #translation of Darwin homes
       TO="/Users/$USER_REMOTE"
     ;;
@@ -476,13 +476,15 @@ then
     ;;
     "corral.tacc.utexas.edu"|"wrangler.tacc.utexas.edu")
       which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
+      [ -e $HOME/bin/ls5.sh ] && ECHO+=" $HOME/bin/ls5.sh "
       TO="/home/$USER_REMOTE"
     ;;
     *.tacc.utexas.edu)
       which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
+      [ -e $HOME/bin/ls5.sh ] && ECHO+=" $HOME/bin/ls5.sh "
       TO="/home1/00767/$USER_REMOTE"
     ;;
-    * )
+    *)
       TO="/home/$USER_REMOTE"
     ;;
   esac
@@ -525,7 +527,7 @@ then
   if $LOCAL2REMOTE && $REMOTE2LOCAL
   then
     echo "Directional sync  : local -> remote -> local"
-  elif $LOCAL2REMOTE 
+  elif $LOCAL2REMOTE
   then
     echo "Directional sync  : local -> remote"
   elif $REMOTE2LOCAL
