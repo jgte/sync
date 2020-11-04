@@ -56,7 +56,7 @@
 #                 - the creation of a directory
 #                 - the changing of a symlink,
 #                 - etc.
-#              h: the item is a hard link to another item (requires 
+#              h: the item is a hard link to another item (requires
 #                 --hard-links).
 #              .: the item is not being updated (though it might have
 #                 attributes that are being modified)
@@ -86,10 +86,10 @@ LOG=${LOG// /_}
 
 #default flags
 DEFAULT_FLAGS=" --recursive --times --omit-dir-times --links --no-group --modify-window=1"
-#skip files that are newer on the receiver 
+#skip files that are newer on the receiver
 #NOTICE: this can be dangerous when mirroring, since touching a file at destination will prevent it from being updated
-#        for this reason, --update is added to ADDITIONAL_FLAGS whenever --not-local2remote or --not-remote2local are used
-# DEFAULT_FLAGS+=" --update" 
+#        for this reason, --update is added to RSYNC_ARGS whenever --not-local2remote or --not-remote2local are used
+# DEFAULT_FLAGS+=" --update"
 DEFAULT_FLAGS+=" --exclude=.DS_Store"
 DEFAULT_FLAGS+=" --exclude=._*"
 DEFAULT_FLAGS+=" --exclude=*.o"
@@ -120,47 +120,47 @@ DEFAULT_FLAGS+=" --exclude=*.!sync"
 DEFAULT_FLAGS+=" --exclude=Icon*"
 
 #script-specific arguments
-SCRIPT_ARGS="--not-dir2local --no-d2l --not-local2dir --no-l2d --not-local2remote --no-l2r --not-remote2local --no-r2l --no-confirmation --no-feedback --backup-deleted --no-default-flags --no-exclude-file --no-include-file --no-arguments-file --be-verbose"
+SCRIPT_ARGS_ALL="--not-dir2local --no-d2l --not-local2dir --no-l2d --not-local2remote --no-l2r --not-remote2local --no-r2l --no-confirmation --no-feedback --backup-deleted --no-default-flags --no-exclude-file --no-include-file --no-arguments-file --be-verbose --no-git-check"
 
 # ------------- given arguments -------------
 
-ARGS="$@"
+SCRIPT_ARGS="$@"
 
 # ------------- resolve arguments with many names -------------
 
 function remote2local()
 {
-  [[ "${ARGS//--not-remote2local}" == "$ARGS" ]] && \
-  [[ "${ARGS//--not-dir2local}"    == "$ARGS" ]] && \
-  [[ "${ARGS//--no-r2l}"           == "$ARGS" ]] && \
-  [[ "${ARGS//--no-d2l}"           == "$ARGS" ]] && \
+  [[ "${SCRIPT_ARGS//--not-remote2local}" == "$SCRIPT_ARGS" ]] && \
+  [[ "${SCRIPT_ARGS//--not-dir2local}"    == "$SCRIPT_ARGS" ]] && \
+  [[ "${SCRIPT_ARGS//--no-r2l}"           == "$SCRIPT_ARGS" ]] && \
+  [[ "${SCRIPT_ARGS//--no-d2l}"           == "$SCRIPT_ARGS" ]] && \
   return 0 || \
   return 1
 }
 
 function local2remote()
 {
-  [[ "${ARGS//--not-local2remote}" == "$ARGS" ]] && \
-  [[ "${ARGS//--not-local2dir}"    == "$ARGS" ]] && \
-  [[ "${ARGS//--no-l2r}"           == "$ARGS" ]] && \
-  [[ "${ARGS//--no-l2d}"           == "$ARGS" ]] && \
+  [[ "${SCRIPT_ARGS//--not-local2remote}" == "$SCRIPT_ARGS" ]] && \
+  [[ "${SCRIPT_ARGS//--not-local2dir}"    == "$SCRIPT_ARGS" ]] && \
+  [[ "${SCRIPT_ARGS//--no-l2r}"           == "$SCRIPT_ARGS" ]] && \
+  [[ "${SCRIPT_ARGS//--no-l2d}"           == "$SCRIPT_ARGS" ]] && \
   return 0 || \
   return 1
 }
 
 function show-feedback()
 {
-  [[ "${ARGS//--no-feedback/}" == "$ARGS" ]] && return 0 || return 1
+  [[ "${SCRIPT_ARGS//--no-feedback/}" == "$SCRIPT_ARGS" ]] && return 0 || return 1
 }
 
 function be-verbose()
 {
-  [[ "${ARGS//--be-verbose/}" == "$ARGS" ]] && return 1 || return 0
+  [[ "${SCRIPT_ARGS//--be-verbose/}" == "$SCRIPT_ARGS" ]] && return 1 || return 0
 }
 
 # ------------- additonal flags -------------
 
-ADDITIONAL_FLAGS="$@"
+RSYNC_ARGS="$@"
 
 # ------------- remote dir name -------------
 
@@ -171,9 +171,8 @@ function strip_file_accessories(){
   echo $OUT
 }
 
-DIR_REMOTE=$(strip_file_accessories $0)
-DIR_REMOTE=$HOME/${DIR_REMOTE//\:/\/}
-DIR_REMOTE_FILE=$DIR_REMOTE
+DIR_REMOTE_FILE=$(strip_file_accessories $0)
+DIR_REMOTE=$HOME/${DIR_REMOTE_FILE//\:/\/}
 
 # ------------- handle files with rsync options -------------
 
@@ -186,6 +185,7 @@ function get-rsync-file()
     "$DIR_SOURCE/rsync.$(basename $DIR_REMOTE).$1" \
     "$DIR_SOURCE/rsync.$1"
   do
+    # echo "get-rsync-file: $i" 1>&2
     if [ -e "$i" ]
     then
       echo "$i"
@@ -194,19 +194,25 @@ function get-rsync-file()
   done
   echo ""
 }
+#return the name of a rsync.*{exclude|include|arguments} file
+function set-rsync-file()
+{
+  local TYPE=$1
+  echo "$DIR_SOURCE/rsync.$(basename $DIR_REMOTE_FILE).$1"
+}
 
 # ------------- arguments file -------------
 
 ARGUMENTS_FILE="$(get-rsync-file arguments)"
 if [ ! -z "$ARGUMENTS_FILE" ] && \
-  [[ "${ARGS//--no-arguments-file/}" == "$ARGS" ]]
+  [[ "${SCRIPT_ARGS//--no-arguments-file/}" == "$SCRIPT_ARGS" ]]
 then
   if [ $(cat "$ARGUMENTS_FILE" | wc -l) -gt 1 ]
   then
     echo "ERROR: file $DIR_SOURCE/rsync.arguments cannot have more than one line."
     exit 3
   fi
-  ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS $(cat "$ARGUMENTS_FILE")"
+  RSYNC_ARGS="$RSYNC_ARGS $(cat "$ARGUMENTS_FILE")"
   if show-feedback
   then
     echo "====================================================================="
@@ -222,19 +228,21 @@ fi
 
 # ------------- clean script-specific arguments -------------
 
-#NOTICE: this does not clean command in the form --<arg>=<something>, 
+#NOTICE: this does not clean command in the form --<arg>=<something>,
 #        such as --remote-dir=...; those need to handled below.
-#NOTICE: ARGS will be augments with all the SCRIPT_ARGS in ADDITIONAL_FLAGS; 
-#        if SCRIPT_ARGS options are passed in the command line, then they are already
-#        in ARGS (ARGS=$@) and there will be duplicates. This is no problem.
-#        The point of this loop is to pass the SCRIPT_ARGS collected from 
-#        rsync.arguments to ARGS (and to clean ADDITIONAL_FLAGS of them).
-for i in $SCRIPT_ARGS
+#NOTICE: SCRIPT_ARGS will be augmented with all the SCRIPT_ARGS_ALL that are present in RSYNC_ARGS;
+#        in turn, RSYNC_ARGS will be cleaned of those arguments.
+#        if SCRIPT_ARGS_ALL options are passed in the command line, then they are already
+#        in SCRIPT_ARGS (SCRIPT_ARGS=$@) and there will be duplicates. This is no problem.
+#        The point of this loop is to pass the SCRIPT_ARGS_ALL collected from
+#        rsync.arguments to SCRIPT_ARGS (and to clean RSYNC_ARGS of them).
+for i in $SCRIPT_ARGS_ALL
 do
-  if [[ ! "${ADDITIONAL_FLAGS//$i/}" == "$ADDITIONAL_FLAGS" ]]
+  if [[ ! "${RSYNC_ARGS//$i/}" == "$RSYNC_ARGS" ]]
   then
-    ADDITIONAL_FLAGS=${ADDITIONAL_FLAGS//$i/}
-    ARGS="$ARGS $i"
+    #remove this argument from the rsync list of arguments
+    RSYNC_ARGS=${RSYNC_ARGS//$i/}
+    SCRIPT_ARGS="$SCRIPT_ARGS $i"
   fi
 done
 
@@ -242,9 +250,9 @@ done
 
 for arg in --remote-dir= #--remote-user= --remote-computer= --pre-run=
 do
-  if [[ ! "${ADDITIONAL_FLAGS/$arg}" == "$ADDITIONAL_FLAGS" ]]
+  if [[ ! "${RSYNC_ARGS/$arg}" == "$RSYNC_ARGS" ]]
   then
-    for i in $ADDITIONAL_FLAGS
+    for i in $RSYNC_ARGS
     do
       if [[ ! "${i/$arg}" == "$i" ]]
       then
@@ -262,9 +270,9 @@ do
           ;;
         esac
         #trim additional flags
-        ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS//$arg$V/}"
+        RSYNC_ARGS="${RSYNC_ARGS//$arg$V/}"
         #append to args
-        ARGS="$ARGS $arg$V"
+        SCRIPT_ARGS="$SCRIPT_ARGS $arg$V"
         break
       fi
     done
@@ -288,14 +296,17 @@ function ensure_file()
 GITSYNC=false
 #make sure rsync.include exists
 INCLUDE_FILE="$(get-rsync-file include)"
+[ -z "$INCLUDE_FILE" ] && INCLUDE_FILE="$(set-rsync-file include)"
 ensure_file "$INCLUDE_FILE"
-if [[ "${ADDITIONAL_FLAGS/--delete}" == "$ADDITIONAL_FLAGS" ]]
+#NOTICE: git checkind needs --delete and not --no-git-check
+if [[ "${RSYNC_ARGS/--delete}" == "$RSYNC_ARGS" ]] || \
+   [[ ! "${SCRIPT_ARGS/--no-git-check}" == "$SCRIPT_ARGS" ]]
 then
   if grep -q '.git*' "$INCLUDE_FILE"
   then
     $SHOW_FEEDBACK && echo "NOTICE: to sync .git, need the --delete flag, otherwise .git dirs are ignored."
     grep -v '.git' "$INCLUDE_FILE" > /tmp/rsync.include.$$ || true
-    mv -f /tmp/rsync.include.$$ "$INCLUDE_FILE"
+    mv -fv /tmp/rsync.include.$$ "$INCLUDE_FILE"
   fi
 else
   GITSYNC=true
@@ -310,6 +321,7 @@ fi
 
 if $GITSYNC
 then
+  $SHOW_FEEDBACK && echo "Checking git versions..."
   while IFS='' read -r -d '' d; do
     $SHOW_FEEDBACK && echo "Checking git version at $d"
     GITDIRLOCAL="$(dirname "$d")"
@@ -334,11 +346,11 @@ fi
 
 EXCLUDE_FILE="$(get-rsync-file exclude)"
 if [ ! -z "$EXCLUDE_FILE" ] && \
-  [[ "${ARGS//--no-exclude-file/}" == "$ARGS" ]]
+  [[ "${SCRIPT_ARGS//--no-exclude-file/}" == "$SCRIPT_ARGS" ]]
 then
   EXCLUDE="--exclude-from=$EXCLUDE_FILE"
   if $SHOW_FEEDBACK
-  then 
+  then
     echo -n "Exclude file      : $EXCLUDE_FILE"
     $BE_VERBOSE \
       && echo -e ":\n$(cat "$EXCLUDE_FILE")" \
@@ -353,7 +365,7 @@ fi
 
 INCLUDE_FILE="$(get-rsync-file include)"
 if [ ! -z "$INCLUDE_FILE" ] && \
-  [[ "${ARGS//--no-include-file/}" == "$ARGS" ]]
+  [[ "${SCRIPT_ARGS//--no-include-file/}" == "$SCRIPT_ARGS" ]]
 then
   INCLUDE="--include-from=$INCLUDE_FILE"
   if $SHOW_FEEDBACK
@@ -370,7 +382,7 @@ fi
 
 # ------------- backup deleted files -------------
 
-if [[ ! "${ARGS//--backup-deleted/}" == "$ARGS" ]]
+if [[ ! "${SCRIPT_ARGS//--backup-deleted/}" == "$SCRIPT_ARGS" ]]
 then
   DATE=
   machine_is Darwin && DATE=$(date "+%Y-%m-%d")
@@ -379,17 +391,17 @@ then
     echo "BUG TRAP: need implementation of date for this machine"
     exit 3
   fi
-  ADDITIONAL_FLAGS+=" --delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
+  RSYNC_ARGS+=" --delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
 fi
 
 # ------------- get rid of default flags -------------
 
-[[ "${ARGS//--no-default-flags/}" == "$ARGS" ]] || DEFAULT_FLAGS=
+[[ "${SCRIPT_ARGS//--no-default-flags/}" == "$SCRIPT_ARGS" ]] || DEFAULT_FLAGS=
 
 # ------------- resolve argument conflicts -------------
 
 #need to remove sparse if inplace if given
-if [[ ! "${ADDITIONAL_FLAGS//--inplace/}" == "$ADDITIONAL_FLAGS" ]]
+if [[ ! "${RSYNC_ARGS//--inplace/}" == "$RSYNC_ARGS" ]]
 then
   DEFAULT_FLAGS="${DEFAULT_FLAGS//--sparse/}"
   $SHOW_FEEDBACK && echo "Removed --sparse because --inplace was given."
@@ -398,7 +410,7 @@ fi
 # ------------- update flag -------------
 
 if $REMOTE2LOCAL || $LOCAL2REMOTE; then
-  [[ "${ADDITIONAL_FLAGS//--update/}" == "$ADDITIONAL_FLAGS" ]] && ADDITIONAL_FLAGS+=" --update"
+  [[ "${RSYNC_ARGS//--update/}" == "$RSYNC_ARGS" ]] && RSYNC_ARGS+=" --update"
 fi
 
 # ------------- feedback -------------
@@ -406,16 +418,16 @@ fi
 if $SHOW_FEEDBACK
 then
   $BE_VERBOSE \
-    && ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --progress --human-readable" \
-    || ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --itemize-changes"
+    && RSYNC_ARGS="$RSYNC_ARGS --progress --human-readable" \
+    || RSYNC_ARGS="$RSYNC_ARGS --itemize-changes"
   $BE_VERBOSE && echo "Default flags     : $DEFAULT_FLAGS"
-  echo "Additional flags  : $ADDITIONAL_FLAGS"
+  echo "Additional flags  : $RSYNC_ARGS"
   echo "Remote dir        : $DIR_REMOTE"
   echo "Local dir         : $DIR_SOURCE"
   if $LOCAL2REMOTE && $REMOTE2LOCAL
   then
     echo "Directional sync  : local -> remote -> local"
-  elif $LOCAL2REMOTE 
+  elif $LOCAL2REMOTE
   then
     echo "Directional sync  : local -> remote"
   elif $REMOTE2LOCAL
@@ -427,12 +439,12 @@ then
   echo "====================================================================="
 else
   #at least show me the changes
-  ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS --itemize-changes"
+  RSYNC_ARGS="$RSYNC_ARGS --itemize-changes"
 fi
 
 # ------------- user in the loop? -------------
 
-if [[ "${ARGS//--no-confirmation/}" == "$ARGS" ]]
+if [[ "${SCRIPT_ARGS//--no-confirmation/}" == "$SCRIPT_ARGS" ]]
 then
   echo "Continue [Y/n] ?"
   read ANSWER
@@ -448,7 +460,7 @@ if $LOCAL2REMOTE
 then
   $SHOW_FEEDBACK && echo "Synching $DIR_SOURCE -> $DIR_REMOTE"
   $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
-    $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
+    $INCLUDE $DEFAULT_FLAGS $RSYNC_ARGS $EXCLUDE \
     "$DIR_SOURCE/" "$DIR_REMOTE/"
 fi
 
@@ -458,6 +470,6 @@ if $REMOTE2LOCAL
 then
   $SHOW_FEEDBACK && echo "Synching $DIR_REMOTE -> $DIR_SOURCE"
   $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
-    $INCLUDE $DEFAULT_FLAGS $ADDITIONAL_FLAGS $EXCLUDE \
+    $INCLUDE $DEFAULT_FLAGS $RSYNC_ARGS $EXCLUDE \
     "$DIR_REMOTE/" "$DIR_SOURCE/"
 fi
