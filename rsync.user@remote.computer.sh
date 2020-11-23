@@ -252,12 +252,12 @@ ARGUMENTS_FILE="$(get-rsync-file arguments)"
 if [ ! -z "$ARGUMENTS_FILE" ] && \
   [[ "${ARGS//--no-arguments-file/}" == "$ARGS" ]]
 then
-  if [ $(cat "$ARGUMENTS_FILE" | wc -l) -gt 1 ]
+  if [ $(cat "$ARGUMENTS_FILE" | grep -v '#' | grep -v '^ *$' | wc -l) -gt 1 ]
   then
     echo "ERROR: file $DIR_SOURCE/rsync.arguments cannot have more than one line."
     exit 3
   fi
-  ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS $(cat "$ARGUMENTS_FILE")"
+  ADDITIONAL_FLAGS="$ADDITIONAL_FLAGS $(cat "$ARGUMENTS_FILE" | grep -v '#' | grep -v '^ *$')"
   if show-feedback
   then
     echo "====================================================================="
