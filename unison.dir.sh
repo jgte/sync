@@ -100,67 +100,73 @@ IGNORE_FLAGS+=(-ignore 'Name .HFS+*')
 
 # ------------- dir -------------
 
-DIR=`basename "$0"`
-DIR=${DIR#unison.}
-DIR=${DIR%.sh}
-DIR=${DIR//\:/\/}
+DIRNAME=`basename "$0"`
+DIRNAME=${DIRNAME#unison.}
+DIRNAME=${DIRNAME%.sh}
+DIR=${DIRNAME//\:/\/}
 DIR=$HOME/$DIR
 
 # ------------- exclude file -------------
 
-FILE_NOW="$LOCAL/unison.ignore"
-if [ -e "$FILE_NOW" ]
-then
-    file_ends_with_newline "$FILE_NOW" || {
-        echo "ERROR: file $FILE_NOW needs to end with a newline."
-        exit 3
-    }
-    while read i
-    do
-        EXCLUDE+=(-ignore "$i")
-    done < "$FILE_NOW"
-    echo "Using exclude file $FILE_NOW: ${EXCLUDE[@]}"
-else
-    echo "Not using any exclude file."
-fi
+for FILE_NOW in "$LOCAL/unison.ignore" "$LOCAL/unison.$DIRNAME.ignore"
+do
+    if [ -e "$FILE_NOW" ]
+    then
+        file_ends_with_newline "$FILE_NOW" || {
+            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            exit 3
+        }
+        while read i
+        do
+            EXCLUDE+=(-ignore "$i")
+        done < "$FILE_NOW"
+        echo "Using exclude file $FILE_NOW: ${EXCLUDE[@]}"
+    else
+        echo "Not using any exclude file."
+    fi
+done
 
 # ------------- include file -------------
 
-FILE_NOW="$LOCAL/unison.ignorenot"
-if [ -e "$FILE_NOW" ]
-then
-    file_ends_with_newline "$FILE_NOW" || {
-        echo "ERROR: file $FILE_NOW needs to end with a newline."
-        exit 3
-    }
-    while read i
-    do
-        INCLUDE+=(-ignorenot "$i")
-    done < "$FILE_NOW"
-    echo "Using include file $FILE_NOW: ${INCLUDE[@]}"
-else
-    echo "Not using any include file."
-fi
+for FILE_NOW in "$LOCAL/unison.ignorenot" "$LOCAL/unison.$DIRNAME.ignorenot"
+do
+    if [ -e "$FILE_NOW" ]
+    then
+        file_ends_with_newline "$FILE_NOW" || {
+            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            exit 3
+        }
+        while read i
+        do
+            INCLUDE+=(-ignorenot "$i")
+        done < "$FILE_NOW"
+        echo "Using include file $FILE_NOW: ${INCLUDE[@]}"
+    else
+        echo "Not using any include file."
+    fi
+done
 
 # ------------- argument file -------------
 
-FILE_NOW="$LOCAL/unison.arguments"
-if [ -e "$FILE_NOW" ]
-then
-    file_ends_with_newline "$FILE_NOW" || {
-        echo "ERROR: file $FILE_NOW needs to end with a newline."
-        exit 3
-    }
-    while read i
-    do
-        echo $i
-        FILE_FLAGS+=($i)
-    done < "$FILE_NOW"
-    echo "Using arguments file $FILE_NOW"
-else
-    FILE_FLAGS=
-    echo "Not using any arguments file."
-fi
+for FILE_NOW in "$LOCAL/unison.arguments" "$LOCAL/unison.$DIRNAME.arguments"
+do
+    if [ -e "$FILE_NOW" ]
+    then
+        file_ends_with_newline "$FILE_NOW" || {
+            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            exit 3
+        }
+        while read i
+        do
+            echo $i
+            FILE_FLAGS+=($i)
+        done < "$FILE_NOW"
+        echo "Using arguments file $FILE_NOW"
+    else
+        FILE_FLAGS=
+        echo "Not using any arguments file."
+    fi
+done
 
 # ------------- more arguments in the command line -------------
 
