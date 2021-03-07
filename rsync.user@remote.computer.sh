@@ -191,6 +191,8 @@ function computer_remote(){
   echo $COMPUTER_REMOTE
 }
 
+#NOTICE: the COMPUTER_REMOTE_FILE (ans USER_REMOTE_FILE, below) variables are needed in order to ensure rsync.*{exclude|include|arguments} in the form of (e.g.) rsync.teixeira@aristarchos.lr.tudelft.nl.{exclude|include|arguments} work properly.
+
 COMPUTER_REMOTE=$(computer_remote $0)
 COMPUTER_REMOTE_FILE=$COMPUTER_REMOTE
 
