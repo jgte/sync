@@ -108,6 +108,7 @@ DIR=$HOME/$DIR
 
 # ------------- exclude file -------------
 
+EXCLUDE=()
 for FILE_NOW in "$LOCAL/unison.ignore" "$LOCAL/unison.$DIRNAME.ignore"
 do
     if [ -e "$FILE_NOW" ]
@@ -128,6 +129,7 @@ done
 
 # ------------- include file -------------
 
+INCLUDE=()
 for FILE_NOW in "$LOCAL/unison.ignorenot" "$LOCAL/unison.$DIRNAME.ignorenot"
 do
     if [ -e "$FILE_NOW" ]
