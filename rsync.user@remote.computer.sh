@@ -132,6 +132,8 @@ DEFAULT_FLAGS+=" --exclude=Icon"
 DEFAULT_FLAGS+=" --exclude=*~"
 DEFAULT_FLAGS+=" --exclude=*.!sync"
 DEFAULT_FLAGS+=" --exclude=Icon*"
+DEFAULT_FLAGS+=" --exclude=.*.swp"
+DEFAULT_FLAGS+=" --exclude=*/__pycache__/*"
 
 #script-specific arguments
 SCRIPT_ARGS="--not-dir2local --no-d2l --not-local2dir --no-l2d --not-local2remote --no-l2r --not-remote2local --no-r2l --no-confirmation --no-feedback --backup-deleted --no-default-flags --no-exclude-file --no-include-file --no-arguments-file --be-verbose"
