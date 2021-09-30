@@ -15,6 +15,7 @@
 #
 # https://github.com/jgte/bash
 
+
 function machine_is
 {
   OS=`uname -v`
@@ -123,7 +124,7 @@ do
         done < "$FILE_NOW"
         echo "Using exclude file $FILE_NOW: ${EXCLUDE[@]}"
     else
-        echo "Not using any exclude file."
+        echo "Not using exclude file $(basename $FILE_NOW)."
     fi
 done
 
@@ -144,12 +145,13 @@ do
         done < "$FILE_NOW"
         echo "Using include file $FILE_NOW: ${INCLUDE[@]}"
     else
-        echo "Not using any include file."
+        echo "Not using include file $(basename $FILE_NOW)."
     fi
 done
 
 # ------------- argument file -------------
 
+FILE_FLAGS=()
 for FILE_NOW in "$LOCAL/unison.arguments" "$LOCAL/unison.$DIRNAME.arguments"
 do
     if [ -e "$FILE_NOW" ]
@@ -165,8 +167,7 @@ do
         done < "$FILE_NOW"
         echo "Using arguments file $FILE_NOW"
     else
-        FILE_FLAGS=
-        echo "Not using any arguments file."
+        echo "Not using arguments file $(basename $FILE_NOW)."
     fi
 done
 
@@ -183,7 +184,7 @@ fi
 
 # ------------- dirs -------------
 
-if [[ ! "${FILE_FLAGS//--remote-dir=/}" == "${FILE_FLAGS}" ]]
+if [ ${#FILE_FLAGS[@]} -gt 0 ] && [[ ! "${FILE_FLAGS//--remote-dir=/}" == "${FILE_FLAGS}" ]]
 then
     for i in $FILE_FLAGS
     do
