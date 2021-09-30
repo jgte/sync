@@ -351,7 +351,7 @@ then
   SSH_KEY_FILE=none
   $SHOW_FEEDBACK && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
 else
-  [ -z "$SSH_AUTH_SOCK" ] && eval $(ssh-agent -s)
+  [ -z "${SSH_AUTH_SOCK:-}" ] && eval $(ssh-agent -s)
   ssh-add -t 60 $SSH_KEY_FILE
   $SHOW_FEEDBACK && echo "Using keyfile $SSH_KEY_FILE"
 fi
