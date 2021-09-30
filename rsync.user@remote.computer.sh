@@ -428,7 +428,7 @@ then
     echo "BUG TRAP: need implementation of date for this machine"
     exit 3
   fi
-  ADDITIONAL_FLAGS+=" --delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
+  ADDITIONAL_FLAGS+=" --delete --backup --backup-dir=backup/$DATE --exclude=backup.????-??-??"
 fi
 
 # ------------- get rid of default flags -------------

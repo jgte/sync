@@ -69,6 +69,12 @@ function machine_is
   [[ ! "${OS//$1/}" == "$OS" ]] && return 0 || return 1
 }
 
+DATE=$(which gdate 2> /dev/null || which date)
+function is_file_older
+{
+  [ $( $DATE +%s -r "$1" ) -ge $( $DATE +%s --date="$2" ) ] && return 0 || return 1
+}
+
 # ------------- dynamic parameters -------------
 
 DIR_SOURCE="$(cd $(dirname $0); pwd)"
@@ -395,14 +401,7 @@ fi
 
 if [[ ! "${SCRIPT_ARGS//--backup-deleted/}" == "$SCRIPT_ARGS" ]]
 then
-  DATE=
-  machine_is Darwin && DATE=$(date "+%Y-%m-%d")
-  if [ -z "$DATE" ]
-  then
-    echo "BUG TRAP: need implementation of date for this machine"
-    exit 3
-  fi
-  RSYNC_ARGS+=" --delete --backup --backup-dir=backup.$DATE --exclude=backup.????-??-??"
+  RSYNC_ARGS+=" --delete --backup --backup-dir=backup/$( $DATE "+%Y-%m-%d") --exclude=backup.????-??-??"
 fi
 
 # ------------- get rid of default flags -------------
