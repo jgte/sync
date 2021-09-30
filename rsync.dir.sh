@@ -319,27 +319,38 @@ fi
 
 # ------------- resolve git versions -------------
 
+
 if $GITSYNC
 then
+  GITLIST_FILE="$DIR_SOURCE/rsync.$(basename $DIR_REMOTE_FILE).git-list"
+  if [ -e "$GITLIST_FILE" ] && is_file_older "$GITLIST_FILE" "1 week ago"
+  then
+    echo "Reading list of git repositories from $GITLIST_FILE"
+  else
+    echo "Updating list of git repositories to $GITLIST_FILE"
+    find "$DIR_SOURCE" -type d -name .git -print0 > "$GITLIST_FILE"
+  fi
   $SHOW_FEEDBACK && echo "Checking git versions..."
   while IFS='' read -r -d '' d; do
     $SHOW_FEEDBACK && echo "Checking git version at $d"
     GITDIRLOCAL="$(dirname "$d")"
-    GITDIRSINK="${GITDIRLOCAL/"$DIR_SOURCE"/"$DIR_REMOTE"}"
-    GITVERSINK=$( git -C "$GITDIRSINK"  log --pretty=format:"%at" 2> /dev/null | head -n1)
-    GITVERLOCAL=$(git -C "$GITDIRLOCAL" log --pretty=format:"%at" 2> /dev/null | head -n1)
+    GITDIRSINK="${GITDIRLOCAL/$DIR_SOURCE/$DIR_REMOTE}"
+    GITVERLOCAL=$(git -C "$GITDIRLOCAL" log --pretty=format:"%at" 2>&1 | head -n1)
+    GITVERSINK=$( git -C "$GITDIRSINK"  log --pretty=format:"%at" 2>&1 | head -n1)
+    echo "$GITVERLOCAL" | grep -q fatal && echo "failed git log on $GITDIRLOCAL" && continue
+    echo "$GITVERSINK"  | grep -q fatal && echo "failed git log on $GITDIRSINK"  && continue
     if [ ! -z "$GITVERSINK" ] && [ ! -z "$GITVERLOCAL" ] && [ $GITVERLOCAL -lt $GITVERSINK ]
     then
       echo "WARNING: date of git repo at source is lower than at sink:"
-      echo "source: $($DATE -d @$GITVERLOCAL) $GITDIRLOCAL/$i"
-      echo "sink  : $($DATE -d @$GITVERSINK) $GITDIRSINK/$i"
+      echo "source: $($DATE -d @$GITVERLOCAL) $GITDIRLOCAL"
+      echo "sink  : $($DATE -d @$GITVERSINK) $GITDIRSINK"
       echo "Skip synching '$i'"
       EXCLUDE+=" --exclude=${GITDIRLOCAL/"$DIR_SOURCE"}"
     # else
     #   echo "source: $($DATE -d @$GITVERLOCAL) $GITDIRLOCAL/$i"
     #   echo "sink  : $($DATE -d @$GITVERSINK) $GITDIRSINK/$i"
     fi
-  done < <(find "$DIR_SOURCE" -type d -name .git -print0)
+  done < "$GITLIST_FILE"
 fi
 
 # ------------- exclude file -------------
