@@ -459,11 +459,11 @@ then
     "srv227.tudelft.net" )
       FROM="/home/nfs/$USER_REMOTE"
     ;;
-    *.ls5.tacc.utexas.edu)
-      FROM="/home1/00767/$USER_REMOTE"
-    ;;
-    *.corral.tacc.utexas.edu)
+    "corral.tacc.utexas.edu"|"wrangler.tacc.utexas.edu")
       FROM="/home/utexas/csr/$USER_REMOTE"
+    ;;
+    *.tacc.utexas.edu)
+      FROM="/home1/00767/$USER_REMOTE"
     ;;
     *)
       FROM="/home/$USER_REMOTE"
