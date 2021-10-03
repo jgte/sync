@@ -582,9 +582,10 @@ do
 
   if ! is-included dir-remote ${DEFINED_ARGS[@]:-}
   then
-    #editing the remote dir (no need to escape the / character of the replacing string, apparently)
-    DIR_REMOTE="${DIR_SOURCE/\/home\/$USER\///home/$USER_REMOTE/}"
-    DIR_REMOTE="${DIR_SOURCE/\/Users\/$USER\///Users/$USER_REMOTE/}"
+    # #editing the remote dir (no need to escape the / character of the replacing string, apparently)
+    # DIR_REMOTE="${DIR_SOURCE/\/home\/$USER\///home/$USER_REMOTE/}"
+    # DIR_REMOTE="${DIR_SOURCE/\/Users\/$USER\///Users/$USER_REMOTE/}"
+    DIR_REMOTE="${DIR_SOURCE/$HOME\//\$HOME/}"
   fi
 
   # ------------- keyfile -------------
