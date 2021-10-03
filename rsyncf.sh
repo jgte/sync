@@ -634,6 +634,20 @@ do
     fi
   fi
 
+  # ------------- 2FA -------------
+
+  case "$COMPUTER_REMOTE" in
+    *.tacc.utexas.edu)
+      if which ls5.sh &> /dev/null
+      then
+        ECHO+=" ls5.sh "
+      elif [ -e $HOME/bin/ls5.sh ]
+      then
+        ECHO+=" $HOME/bin/ls5.sh "
+      fi
+    ;;
+  esac
+
   # ------------- backup deleted files -------------
 
   if $BACKUP_DELETE
