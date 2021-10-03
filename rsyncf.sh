@@ -295,10 +295,19 @@ $DEFAULT_FLAGS
     --no-feedback) #be quiet
       SHOW_FEEDBACK=false
     ;;
+    --feedback) #be quiet
+      SHOW_FEEDBACK=true
+    ;;
+    --confirmation) #start syncing immediately, do not as for confirmation
+      NO_CONFIRMATION=false
+    ;;
     --no-confirmation) #start syncing immediately, do not as for confirmation
       NO_CONFIRMATION=true
     ;;
-    --be-verbose|verbose) #be noisy
+    --verbose|verbose) #be noisy
+      BE_VERBOSE=true
+    ;;
+    --no-verbose) #be noisy
       BE_VERBOSE=true
     ;;
     --backup-deleted) #backup files that are deleted
