@@ -595,15 +595,15 @@ do
     SSH_KEY_FILE=$HOME/.ssh/$USER_REMOTE@${COMPUTER_REMOTE%%.*}
   fi
 
-  $SHOW_FEEDBACK && echo "Looking for key file $SSH_KEY_FILE"
+  $BE_VERBOSE && echo "Looking for key file $SSH_KEY_FILE"
   if [ ! -e "$SSH_KEY_FILE" ]
   then
     SSH_KEY_FILE=none
-    $SHOW_FEEDBACK && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
+    $BE_VERBOSE && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
   else
     [ -z "${SSH_AUTH_SOCK:-}" ] && eval $(ssh-agent -s)
-    ssh-add -t 60 $SSH_KEY_FILE
-    $SHOW_FEEDBACK && echo "Using keyfile $SSH_KEY_FILE"
+    ssh-add $($BE_VERBOSE || echo "-q") -t 60 $SSH_KEY_FILE
+    $BE_VERBOSE && echo "Using keyfile $SSH_KEY_FILE"
   fi
 
   # ------------- include .git dirs when --delete is given -------------
