@@ -375,6 +375,12 @@ then
   exit 3
 fi
 
+# retrieve common variables
+COMMON_VARIABLES=$(iniget $REMOTE_LIST "common-variables")
+COMMON_VARIABLES_LIST=$(echo "$COMMON_VARIABLES" | awk -F'=' '/=/ {print $1}')
+
+$BE_VERBOSE && echo -e "COMMON_VARIABLES:\n$COMMON_VARIABLES"
+
 # ------------- loop over all remotes -------------
 
 FIRST=true
@@ -459,6 +465,17 @@ do
     then
       $SHOW_FEEDBACK && echo "Because of input arguments, ignoring value(s) for key $key: $value"
     else
+      #enforcing common variables
+      for i in $COMMON_VARIABLES_LIST
+      do
+        if [[ ! "${value/$i}" == "$value" ]]
+        then
+          value_new="${value/$i} $(echo "$COMMON_VARIABLES" | awk -F'=' '/'$i'=/ {print $2}')"
+          $BE_VERBOSE && echo -e "Replace common variable '$i':\nold value: $value\nnew value: $value_new"
+          value="$value_new"
+        fi
+      done
+      #branch on detail key
       case $key in
       computer-remote)
         COMPUTER_REMOTE=$value
