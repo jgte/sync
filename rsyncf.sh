@@ -755,7 +755,7 @@ do
   do
     $SHOW_FEEDBACK && echo "Synching ${SYNC_LOCATIONS[i]/ / -> }"
     $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
-      $DEFAULT_FLAGS $MORE_FLAGS $ADDITIONAL_FLAGS $FILTER_FLAGS \
+      $MORE_FLAGS $ADDITIONAL_FLAGS $FILTER_FLAGS $DEFAULT_FLAGS \
       ${SYNC_LOCATIONS[i]}
   done
 
