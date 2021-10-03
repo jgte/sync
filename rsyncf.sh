@@ -86,7 +86,8 @@ function iniget() {
     [ $# -eq 3 ] && key=$3
     # This awk line turns ini sections => [section-name]key=value
     local lines=$(awk '/\[/{prefix=$0; next} $1{print prefix $0}' $inifile)
-    lines=$(echo "$lines" | sed -e 's/[[:blank:]]*=[[:blank:]]*/=/g')
+    #remove blanks and trim out comments
+    lines=$(echo "$lines" | sed -e 's/[[:blank:]]*=[[:blank:]]*/=/g' | sed '/^[[:blank:]]*#/d;s/#.*//' )
     while read -r line ; do
       if [[ "$line" = \[$section\]* ]]; then
         local keyval=$(echo "$line" | sed -e "s/^\[$section\]//")
