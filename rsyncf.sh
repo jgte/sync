@@ -204,6 +204,7 @@ BE_VERBOSE=false
 BACKUP_DELETE=false
 ECHO=
 ADDITIONAL_FLAGS=
+ROUTINE=false
 REMOTES=()
 for arg in "$@"
 do
@@ -325,11 +326,20 @@ $DEFAULT_FLAGS
       T=${arg/--no-};T=${T/-file}
       DEFINED_ARGS+=($T)
     ;;
-    echo|debub) #show which rsync commands would have been issues
+    echo|debug) #show which rsync commands would have been issues
       ECHO=echo
     ;;
     --*) #pass this argument directly to rsync
       ADDITIONAL_FLAGS+=" $arg"
+    ;;
+    all) #call rsync on ALL remotes defined in the relevant remotes-file
+      REMOTES=($(iniget $REMOTE_LIST --list))
+      $SHOW_FEEDBACK && echo "Will sync ALL remotes"
+    ;;
+    routine) #call rsync on the remotes that have 'routine = true'
+      REMOTES=($(iniget $REMOTE_LIST --list))
+      ROUTINE=true
+      $SHOW_FEEDBACK && echo "Will sync routine remotes"
     ;;
     *)
       if [ ! -s $REMOTE_LIST ]
@@ -377,6 +387,18 @@ do
   then
     echo "WARNING: cannot find remote '$remote' in file $REMOTE_LIST, ignoring..."
     continue
+  fi
+
+  #skip routine sync if this remote does not have 'routine = true'
+  if $ROUTINE
+  then
+    if echo "$DETAILS" | grep -q 'routine=true'
+    then
+      $BE_VERBOSE && echo "Remote to be included in routine sync: '$remote'"
+    else
+      $BE_VERBOSE && echo "Remote not to be included in routine sync: '$remote'"
+      continue
+    fi
   fi
 
   $SHOW_FEEDBACK && echo "====================================================================="
