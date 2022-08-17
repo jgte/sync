@@ -17,7 +17,7 @@
 #   '--no-r2l'
 #
 # Addtional arguments specifict to this script are:
-#   '--no-confirmation
+#   '--no-confirmation'
 #   '--no-feedback'
 #   '--backup-deleted'
 #   '--no-default-flags'
@@ -196,6 +196,7 @@ USER_REMOTE=$USER
 DIR_REMOTE=
 PRE_SYNC=
 SSH_KEY_FILE=
+SSH_OPTIONS=
 LOCAL2REMOTE=true
 REMOTE2LOCAL=true
 SHOW_FEEDBACK=true
@@ -224,6 +225,7 @@ computer-remote=
      dir-remote=
        pre-sync=
         ssh-key=
+    ssh-options=
 Input argument that are passed directly to rsync (all --* arguments that are not relevant to this script) are preserved for all multiple remotes (if that's the case).
 
 NOTICE: include/exclude details do not support blank-separated file/directory names. The current work-around is to define them manually as input arguments.
@@ -285,6 +287,10 @@ $DEFAULT_FLAGS
       SSH_KEY_FILE=${arg/ssh-key=}
       DEFINED_ARGS+=(ssh-key)
     ;;
+    ssh-options=*) #pass ssh-options=STRING to -e 'ssh STRING'
+      SSH_OPTIONS=${arg/ssh-options=}
+      DEFINED_ARGS+=(ssh-options)
+    ;;
     # ------------------ ) #The arguments below may be defined in the 'arguments' section in the remote list file
     #NOTICE: the argument parsing below needs to be duplicated below, when parsing arguments defined in the remote list file
     --not-remote2local|--not-dir2local|--no-r2l|--no-d2l) #sync direction remote -> local
@@ -305,10 +311,7 @@ $DEFAULT_FLAGS
     --no-confirmation) #start syncing immediately, do not as for confirmation
       NO_CONFIRMATION=true
     ;;
-    --verbose|verbose) #be noisy
-      BE_VERBOSE=true
-    ;;
-    --no-verbose) #be noisy
+    --verbose|verbose|-v) #be noisy
       BE_VERBOSE=true
     ;;
     --backup-deleted) #backup files that are deleted
@@ -433,6 +436,7 @@ do
     DIR_REMOTE=
     PRE_SYNC=
     SSH_KEY_FILE=
+    SSH_OPTIONS=
   fi
 
   LOG=rsyncf.$remote.log
@@ -447,8 +451,8 @@ do
     if echo "$line" | grep -q '='
     then
       #if it is, the define the new key
-      key=$(  echo "$line" | awk -F'=' ' {print $1}')
-      value=$(echo "$line" | awk -F'=' ' {print $2}')
+      key=$(  echo "$line" | awk -F'=' '{print $1}')
+      value=$(echo "$line" | awk -F'=' '{printf("%s",$2);for (i=3; i<=NF; i++) printf("=%s",$i)}')
     else
       #sanity: need to start with a key
       if [ -z "$previous_key" ]
@@ -470,7 +474,7 @@ do
       do
         if [[ ! "${value/$i}" == "$value" ]]
         then
-          value_new="${value/$i} $(echo "$COMMON_VARIABLES" | awk -F'=' '/'$i'=/ {print $2}')"
+          value_new="${value/$i} $(echo "$COMMON_VARIABLES" | awk -F'=' '/'$i'=/ {printf("%s",$2);for (i=3; i<=NF; i++) printf("=%s",$i)}')"
           $BE_VERBOSE && echo -e "Replace common variable '$i':\nold value: $value\nnew value: $value_new"
           value="$value_new"
         fi
@@ -500,6 +504,11 @@ do
       ssh-key)
         SSH_KEY_FILE="$value"
         $BE_VERBOSE && echo "Set SSH_KEY_FILE='$value'"
+        DEFINED_ARGS+=($key)
+      ;;
+      ssh-options)
+        SSH_OPTIONS="$value"
+        $BE_VERBOSE && echo "Set SSH_OPTIONS='$value'"
         DEFINED_ARGS+=($key)
       ;;
       exclude|include)
@@ -585,7 +594,8 @@ do
     # #editing the remote dir (no need to escape the / character of the replacing string, apparently)
     # DIR_REMOTE="${DIR_SOURCE/\/home\/$USER\///home/$USER_REMOTE/}"
     # DIR_REMOTE="${DIR_SOURCE/\/Users\/$USER\///Users/$USER_REMOTE/}"
-    DIR_REMOTE="${DIR_SOURCE/$HOME\//\$HOME/}"
+    # DIR_REMOTE="${DIR_SOURCE/$HOME\//\$HOME/}"
+    DIR_REMOTE="${DIR_SOURCE/$HOME\//~/}"
   fi
 
   # ------------- keyfile -------------
@@ -601,9 +611,20 @@ do
     SSH_KEY_FILE=none
     $BE_VERBOSE && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
   else
-    [ -z "${SSH_AUTH_SOCK:-}" ] && eval $(ssh-agent -s)
-    ssh-add $($BE_VERBOSE || echo "-q") -t 60 $SSH_KEY_FILE
-    $BE_VERBOSE && echo "Using keyfile $SSH_KEY_FILE"
+    [ -z "${SSH_AGENT_PID:-}" ] && eval $(ssh-agent -s)
+    ssh-add $($BE_VERBOSE && echo "-vvv" || echo "-q") -t 60 $SSH_KEY_FILE
+    if $BE_VERBOSE
+    then
+      echo 'eval $(ssh-agent -s)'
+      echo "ssh-add $($BE_VERBOSE && echo "-vvv" || echo "-q") -t 60 $SSH_KEY_FILE"
+    fi
+  fi
+
+  # ------------- ssh options -------------
+
+  if is-included ssh-options ${DEFINED_ARGS[@]:-}
+  then
+    SSH_OPTIONS="-e 'ssh ${SSH_OPTIONS}'"
   fi
 
   # ------------- include .git dirs when --delete is given -------------
@@ -638,12 +659,12 @@ do
 
   case "$COMPUTER_REMOTE" in
     *.tacc.utexas.edu)
-      if which ls5.sh &> /dev/null
+      if which tacc.sh &> /dev/null
       then
-        ECHO+=" ls5.sh "
-      elif [ -e $HOME/bin/ls5.sh ]
+        ECHO+=" tacc.sh "
+      elif [ -e $HOME/bin/tacc.sh ]
       then
-        ECHO+=" $HOME/bin/ls5.sh "
+        ECHO+=" $HOME/bin/tacc.sh "
       fi
     ;;
   esac
@@ -754,9 +775,10 @@ do
   for ((i = 0 ; i < ${#SYNC_LOCATIONS[@]} ; i++))
   do
     $SHOW_FEEDBACK && echo "Synching ${SYNC_LOCATIONS[i]/ / -> }"
-    $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
+    $ECHO eval "rsync --log-file="$DIR_SOURCE/$LOG" \
       $MORE_FLAGS $ADDITIONAL_FLAGS $FILTER_FLAGS $DEFAULT_FLAGS \
-      ${SYNC_LOCATIONS[i]}
+      $SSH_OPTIONS \
+      ${SYNC_LOCATIONS[i]}"
   done
 
 done
