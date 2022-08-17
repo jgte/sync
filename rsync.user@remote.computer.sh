@@ -479,13 +479,13 @@ then
       TO="/home/nfs/$USER_REMOTE"
     ;;
     "corral.tacc.utexas.edu"|"wrangler.tacc.utexas.edu")
-      which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
-      [ -e $HOME/bin/ls5.sh ] && ECHO+=" $HOME/bin/ls5.sh "
+      which tacc.sh &> /dev/null && ECHO+=" tacc.sh "
+      [ -e $HOME/bin/tacc.sh ] && ECHO+=" $HOME/bin/tacc.sh "
       TO="/home/$USER_REMOTE"
     ;;
     *.tacc.utexas.edu)
-      which ls5.sh &> /dev/null && ECHO+=" ls5.sh "
-      [ -e $HOME/bin/ls5.sh ] && ECHO+=" $HOME/bin/ls5.sh "
+      which tacc.sh &> /dev/null && ECHO+=" tacc.sh "
+      [ -e $HOME/bin/tacc.sh ] && ECHO+=" $HOME/bin/tacc.sh "
       TO="/home1/00767/$USER_REMOTE"
     ;;
     *)
