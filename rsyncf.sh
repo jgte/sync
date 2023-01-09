@@ -302,7 +302,7 @@ $DEFAULT_FLAGS
     --no-feedback) #be quiet
       SHOW_FEEDBACK=false
     ;;
-    --feedback) #be quiet
+    --feedback) #do not be quiet
       SHOW_FEEDBACK=true
     ;;
     --confirmation) #start syncing immediately, do not as for confirmation
@@ -313,6 +313,9 @@ $DEFAULT_FLAGS
     ;;
     --verbose|verbose|-v) #be noisy
       BE_VERBOSE=true
+    ;;
+    -x) #turn on bash's -x option
+      set -x
     ;;
     --backup-deleted) #backup files that are deleted
       BACKUP_DELETE=true
@@ -347,7 +350,7 @@ $DEFAULT_FLAGS
     *)
       if [ ! -s $REMOTE_LIST ]
       then
-        echo "ERROR: cannot find non-empty remotes list file, expecting '$REMOTE_LIST'"
+        echo "ERROR: cannot find non-empty remotes list file, expecting '$REMOTE_LIST'; notice that remotes-file=* must come before a rsync target"
         exit 3
       fi
       if grep -q '['${arg//-/\\-}']' $REMOTE_LIST
@@ -383,6 +386,7 @@ COMMON_VARIABLES=$(iniget $REMOTE_LIST "common-variables")
 COMMON_VARIABLES_LIST=$(echo "$COMMON_VARIABLES" | awk -F'=' '/=/ {print $1}')
 
 $BE_VERBOSE && echo -e "COMMON_VARIABLES:\n$COMMON_VARIABLES"
+$BE_VERBOSE && echo -e "REMOTE_LIST:$REMOTE_LIST"
 
 # ------------- loop over all remotes -------------
 
@@ -667,6 +671,9 @@ do
         ECHO+=" $HOME/bin/tacc.sh "
       fi
     ;;
+    *)
+      ECHO+=" eval "
+    ;;
   esac
 
   # ------------- backup deleted files -------------
@@ -714,6 +721,10 @@ do
         OTHER_LIST+=("$i")
       fi
     done
+    echo "ADDITIONAL_FLAGS  : $ADDITIONAL_FLAGS"
+    echo "MORE_FLAGS        : $MORE_FLAGS"
+    echo "FILTER_FLAGS      : $FILTER_FLAGS"
+    echo "DEFAULT_FLAGS     : $DEFAULT_FLAGS"
     echo "Additional flags  : ${OTHER_LIST[@]:-}"
     echo "Include list      : ${INCLUDE_LIST[@]:-}"
     echo "Exclude list      : ${EXCLUDE_LIST[@]:-}"
@@ -775,10 +786,10 @@ do
   for ((i = 0 ; i < ${#SYNC_LOCATIONS[@]} ; i++))
   do
     $SHOW_FEEDBACK && echo "Synching ${SYNC_LOCATIONS[i]/ / -> }"
-    $ECHO eval "rsync --log-file="$DIR_SOURCE/$LOG" \
+    $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
       $MORE_FLAGS $ADDITIONAL_FLAGS $FILTER_FLAGS $DEFAULT_FLAGS \
       $SSH_OPTIONS \
-      ${SYNC_LOCATIONS[i]}"
+      ${SYNC_LOCATIONS[i]}
   done
 
 done
