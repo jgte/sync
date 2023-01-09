@@ -184,7 +184,7 @@ fi
 
 # ------------- dirs -------------
 
-if [ ${#FILE_FLAGS[@]} -gt 0 ] && [[ ! "${FILE_FLAGS//--remote-dir=/}" == "${FILE_FLAGS}" ]]
+if [ ${#FILE_FLAGS[@]} -gt 0 ] && [[ ! "${FILE_FLAGS[@]//--remote-dir=/}" == "${FILE_FLAGS[@]}" ]]
 then
     for i in $FILE_FLAGS
     do
