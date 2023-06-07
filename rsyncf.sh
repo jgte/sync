@@ -332,6 +332,9 @@ $DEFAULT_FLAGS
       T=${arg/--no-};T=${T/-file}
       DEFINED_ARGS+=($T)
     ;;
+    --no-links) #remove --links from the default argument list
+      DEFAULT_FLAGS=${DEFAULT_FLAGS/" --links"}
+    ;;
     echo|debug) #show which rsync commands would have been issues
       ECHO=echo
     ;;
