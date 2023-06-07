@@ -211,7 +211,7 @@ for arg in "$@"
 do
   $BE_VERBOSE && echo -e "Parsing input argument '$arg'"
   case "$arg" in
-    help) #show this help screen
+    --help|-h|help) #show this help screen
       echo "\
 $(basename $BASH_SOURCE) <remote1> [ <remote2> ... ] [...]
 
