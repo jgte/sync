@@ -202,7 +202,7 @@ REMOTE2LOCAL=true
 SHOW_FEEDBACK=true
 NO_CONFIRMATION=true
 BE_VERBOSE=false
-BACKUP_DELETE=false
+BACKUP_DELETED=false
 ECHO=
 ADDITIONAL_FLAGS=
 ROUTINE=false
@@ -318,7 +318,7 @@ $DEFAULT_FLAGS
       set -x
     ;;
     --backup-deleted) #backup files that are deleted
-      BACKUP_DELETE=true
+      BACKUP_DELETED=true
     ;;
     #NOTICE: the argument parsing above needs to be duplicated below, when parsing arguments defined in the remote list file
     # ------------------ ) #The arguments below may be only be defined as input arguments
@@ -565,7 +565,7 @@ do
               BE_VERBOSE=true
             ;;
             --backup-deleted)
-              BACKUP_DELETE=true
+              BACKUP_DELETED=true
             ;;
             #NOTICE: the argument parsing above needs to be duplicated below, when parsing input arguments
             *)
@@ -681,7 +681,7 @@ do
 
   # ------------- backup deleted files -------------
 
-  if $BACKUP_DELETE
+  if $BACKUP_DELETED
   then
     DATE=$(date "+%Y-%m-%d")
     if [ -z "$DATE" ]
@@ -689,7 +689,7 @@ do
       echo "BUG TRAP: could not build data string"
       exit 3
     fi
-    MORE_FLAGS+=" --delete --backup --backup-dir=backup/$(date "+%Y-%m-%d") --exclude=backup/????-??-??"
+    MORE_FLAGS+=" --delete --backup --backup-dir=backup-deleted/$(date "+%Y-%m-%d") --exclude=backup/????-??-??"
   fi
 
   # ------------- update flag -------------
