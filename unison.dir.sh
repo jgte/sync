@@ -201,7 +201,7 @@ ADDITIONAL_FLAGS="$@"
 # ------------- debug -------------
 
 if [[ ! "${ADDITIONAL_FLAGS/-debug/}" == "$ADDITIONAL_FLAGS" ]]; then
-              UNISON="echo $UNISON"
+    UNISON="echo $UNISON"
     ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-debug/}"
 fi
 
@@ -227,7 +227,6 @@ if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "${ADDITIONAL_FLAGS}" ]]
 then
     for i in $ADDITIONAL_FLAGS
     do
-        echo $i
         if [[ ! "${i//--remote-dir=/}" == "$i" ]]
         then
             DIR="${i/--remote-dir=/}"
@@ -348,7 +347,7 @@ then
         echo "local is             : $LOCAL/$subdir"
         echo "====================================================================="
         $UNISON \
-            "${DEFAULT_FLAGS[@]}" \
+            ${DEFAULT_FLAGS[@]} \
             "${IGNORE_FLAGS[@]}" \
             ${EXCLUDE:+"${EXCLUDE[@]}"} \
             ${INCLUDE:+"${INCLUDE[@]}"} \
@@ -377,7 +376,7 @@ else
     echo "local is             : $LOCAL"
     echo "====================================================================="
     $UNISON \
-        "${DEFAULT_FLAGS[@]}" \
+        ${DEFAULT_FLAGS[@]} \
         "${IGNORE_FLAGS[@]}" \
         ${EXCLUDE:+"${EXCLUDE[@]}"} \
         ${INCLUDE:+"${INCLUDE[@]}"} \
@@ -386,5 +385,3 @@ else
         "$DIR" "$LOCAL"
 
 fi
-
-
