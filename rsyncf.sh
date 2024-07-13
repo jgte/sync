@@ -707,7 +707,9 @@ do
       echo "BUG TRAP: could not build data string"
       exit 3
     fi
-    MORE_FLAGS+=" --delete --backup --backup-dir=backup-deleted/$(date "+%Y-%m-%d") --exclude=backup/????-??-??"
+    #NOTICE: do not include --delete here, the --backup-deleted flag only says that any deleted file is
+    # to be backed-up, it does not replace the --delete flag
+    MORE_FLAGS+=" --backup --backup-dir=backup-deleted/$(date "+%Y-%m-%d") --exclude=backup-deleted --exclude=backup-deleted/????-??-??"
   fi
 
   # ------------- update flag -------------
