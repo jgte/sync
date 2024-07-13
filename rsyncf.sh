@@ -815,4 +815,18 @@ do
       ${SYNC_LOCATIONS[i]}
   done
 
+  # common mistakes
+
+  if [[ ! "${ADDITIONAL_FLAGS/--no-times}"  == "$ADDITIONAL_FLAGS" ]] \
+  && [[   "${ADDITIONAL_FLAGS/--size-only}" == "$ADDITIONAL_FLAGS" ]]
+  then
+    echo "NOTICE: you passed --no-times but without --size-only: you may not get what you expect."
+  fi
+
+  if [[   "${ADDITIONAL_FLAGS/--no-times}"  == "$ADDITIONAL_FLAGS" ]] \
+  && [[ ! "${ADDITIONAL_FLAGS/--size-only}" == "$ADDITIONAL_FLAGS" ]]
+  then
+    echo "NOTICE: you passed --size-only but without --no-times: you may not get what you expect."
+  fi
+
 done
