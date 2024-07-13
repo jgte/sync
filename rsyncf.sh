@@ -332,14 +332,18 @@ $DEFAULT_FLAGS
       T=${arg/--no-};T=${T/-file}
       DEFINED_ARGS+=($T)
     ;;
-    --no-links) #remove --links from the default argument list
-      DEFAULT_FLAGS=${DEFAULT_FLAGS/" --links"}
+    --no-*) #remove --<argument> from the default argument list and add it to the rsync call
+      T=${arg/--no-}
+      DEFAULT_FLAGS=${DEFAULT_FLAGS/" --$T"}
+      ADDITIONAL_FLAGS+=" $arg"
+    ;;
+    --*) #pass this argument directly to rsync, also remove any --no-<argument> from the default argument, if any
+      T=${arg/--}
+      DEFAULT_FLAGS=${DEFAULT_FLAGS/" --no-$T"}
+      ADDITIONAL_FLAGS+=" $arg"
     ;;
     echo|debug) #show which rsync commands would have been issues
       ECHO=echo
-    ;;
-    --*) #pass this argument directly to rsync
-      ADDITIONAL_FLAGS+=" $arg"
     ;;
     all) #call rsync on ALL remotes defined in the relevant remotes-file
       REMOTES=($(iniget "$REMOTE_LIST" --list))
@@ -567,10 +571,24 @@ do
             --backup-deleted)
               BACKUP_DELETED=true
             ;;
-            #NOTICE: the argument parsing above needs to be duplicated below, when parsing input arguments
-            *)
+            --no-*) #remove --<argument> from the default argument list and add it to the rsync call
+              T=${i/--no-}
+              DEFAULT_FLAGS=${DEFAULT_FLAGS/" --$T"}
               MORE_FLAGS+=" $i"
-              $BE_VERBOSE && echo "To MORE_FLAGS, appended '$i'"
+              $BE_VERBOSE && echo "To MORE_FLAGS, removed --$T and appended '$i'"
+            ;;
+            echo|debug) #show which rsync commands would have been issues
+              ECHO=echo
+            ;;
+            --*) #pass this argument directly to rsync, also remove any --no-<argument> from the default argument, if any
+              T=${i/--}
+              DEFAULT_FLAGS=${DEFAULT_FLAGS/" --no-$T"}
+              MORE_FLAGS+=" $i"
+              $BE_VERBOSE && echo "To MORE_FLAGS, removed --no-$T and appended '$i'"
+            ;;
+            *)
+              echo "ERROR: cannot handle input argument from remotes file: '$i'"
+              exit 3
             ;;
           esac
         done
