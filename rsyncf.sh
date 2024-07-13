@@ -189,7 +189,7 @@ DEFAULT_FLAGS+=" --exclude=*to-delete*"
 
 # ------------- parse input arguments -------------
 
-REMOTE_LIST=$DIR_SOURCE/rsyncf.list
+REMOTE_LIST="$DIR_SOURCE/rsyncf.list"
 DEFINED_ARGS=()
 COMPUTER_REMOTE=localhost
 USER_REMOTE=$USER
@@ -243,8 +243,8 @@ $DEFAULT_FLAGS
       exit
     ;;
     --list-remotes|list) #show the list of remote locations defined in the remote list file
-      iniget $REMOTE_LIST --list
-      # awk '/remote:/ {print $2}' $REMOTE_LIST
+      iniget "$REMOTE_LIST" --list
+      # awk '/remote:/ {print $2}' "$REMOTE_LIST"
       exit
     ;;
     --details|details) #shows the details associated with the previously defined remotes
@@ -256,14 +256,14 @@ $DEFAULT_FLAGS
       for i in ${REMOTES[@]:-}
       do
         echo "=== details for $i ==="
-        iniget $REMOTE_LIST $i
+        iniget "$REMOTE_LIST" $i
       done
       exit
     ;;
     remotes-file=*) #define the file with the list of remotes, defaults to rsyncf.list in the current directory
       REMOTE_LIST=${arg/remotes-file=}
-      DIR_SOURCE=$(cd $(dirname ${REMOTE_LIST/\~/$HOME});pwd)
-      REMOTE_LIST=$DIR_SOURCE/$(basename $REMOTE_LIST)
+      DIR_SOURCE=$(cd $(dirname "${REMOTE_LIST/\~/$HOME}");pwd)
+      REMOTE_LIST=$DIR_SOURCE/$(basename "$REMOTE_LIST")
       $BE_VERBOSE && echo -e "Set DIR_SOURCE='$DIR_SOURCE'\nSet REMOTE_LIST='$REMOTE_LIST'"
     ;;
     # ------------------ ) #The arguments below may be defined in the remote list file
@@ -342,21 +342,21 @@ $DEFAULT_FLAGS
       ADDITIONAL_FLAGS+=" $arg"
     ;;
     all) #call rsync on ALL remotes defined in the relevant remotes-file
-      REMOTES=($(iniget $REMOTE_LIST --list))
+      REMOTES=($(iniget "$REMOTE_LIST" --list))
       $SHOW_FEEDBACK && echo "Will sync ALL remotes"
     ;;
     routine) #call rsync on the remotes that have 'routine = true'
-      REMOTES=($(iniget $REMOTE_LIST --list))
+      REMOTES=($(iniget "$REMOTE_LIST" --list))
       ROUTINE=true
       $SHOW_FEEDBACK && echo "Will sync routine remotes"
     ;;
     *)
-      if [ ! -s $REMOTE_LIST ]
+      if [ ! -s "$REMOTE_LIST" ]
       then
         echo "ERROR: cannot find non-empty remotes list file, expecting '$REMOTE_LIST'; notice that remotes-file=* must come before a rsync target"
         exit 3
       fi
-      if grep -q '['${arg//-/\\-}']' $REMOTE_LIST
+      if grep -q '['${arg//-/\\-}']' "$REMOTE_LIST"
       then
         $BE_VERBOSE && echo "Added remote '$arg'"
         REMOTES+=($arg)
@@ -385,7 +385,7 @@ then
 fi
 
 # retrieve common variables
-COMMON_VARIABLES=$(iniget $REMOTE_LIST "common-variables")
+COMMON_VARIABLES=$(iniget "$REMOTE_LIST" "common-variables")
 COMMON_VARIABLES_LIST=$(echo "$COMMON_VARIABLES" | awk -F'=' '/=/ {print $1}')
 
 $BE_VERBOSE && echo -e "COMMON_VARIABLES:\n$COMMON_VARIABLES"
@@ -397,7 +397,7 @@ FIRST=true
 for remote in ${REMOTES[@]}
 do
   #retrieve details for this remote
-  DETAILS=$(iniget $REMOTE_LIST $remote)
+  DETAILS=$(iniget "$REMOTE_LIST" $remote)
   #sanity
   if [ -z "$DETAILS" ]
   then
@@ -578,7 +578,7 @@ do
       esac
     fi
     previous_key=$key
-  done < <(iniget $REMOTE_LIST $remote)
+  done < <(iniget "$REMOTE_LIST" $remote)
 
   # ------------- local username -------------
 
