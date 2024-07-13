@@ -183,11 +183,11 @@ do
             echo "ERROR: file $FILE_NOW needs to end with a newline."
             exit 3
         }
-        while read i
+        while read -r i
         do
-            echo $i
-            FILE_FLAGS+=($i)
-        done < "$FILE_NOW"
+            echo "Added to FILE_FLAGS the argument '$i'"
+            FILE_FLAGS+=("$i")
+        done <<< "$(xargs < "$FILE_NOW" printf '%s\n')"
         echo "Using arguments file $FILE_NOW"
     else
         echo "Not using arguments file $(basename $FILE_NOW)."
@@ -209,13 +209,15 @@ fi
 
 if [ ${#FILE_FLAGS[@]} -gt 0 ] && [[ ! "${FILE_FLAGS[@]//--remote-dir=/}" == "${FILE_FLAGS[@]}" ]]
 then
-    for i in $FILE_FLAGS
+    count=0
+    for ((i = 0 ; i < ${#FILE_FLAGS[@]} ; i++))
     do
-        echo $i
-        if [[ ! "${i//--remote-dir=/}" == "$i" ]]
+        echo "FILE_FLAGS[$i]=${FILE_FLAGS[$i]}"
+        if [[ ! "${FILE_FLAGS[$i]//--remote-dir=/}" == "${FILE_FLAGS[$i]}" ]]
         then
-            DIR="${i/--remote-dir=/}"
-            FILE_FLAGS="${FILE_FLAGS//--remote-dir=$DIR/}"
+            DIR="${FILE_FLAGS[$i]/--remote-dir=/}"
+            echo "DIR=$DIR"
+            FILE_FLAGS[$i]=""
             break
         fi
     done
