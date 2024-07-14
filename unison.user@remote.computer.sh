@@ -19,6 +19,44 @@
 #
 # https://github.com/jgte/bash
 
+
+function machine_is
+{
+  OS=`uname -v`
+  [[ ! "${OS//$1/}" == "$OS" ]] && return 0 || return 1
+}
+
+function file_ends_with_newline() {
+    [[ "$(tail -c1 "$1")" == "" ]]
+    # if machine_is Darwin
+    # then
+    #     [[ "$(tail -n1 "$1")" == "" ]]
+    # else
+    #     [[ "$(tail -c1 "$1")" == "" ]]
+    # fi
+}
+
+# ------------- unison executable -------------
+
+UNISON="$(which unison)"
+if [ -z "$UNISON" ]
+then
+    for i in / /usr /usr/local $HOME
+    do
+        for j in bin sbin
+        do
+            [ -e "$i$j/unison" ] && UNISON="$i$j/unison"
+            [ ! -z "$UNISON" ] && break
+        done
+        [ ! -z "$UNISON" ] && break
+    done
+fi
+if [ -z "$UNISON" ]
+then
+    echo ERROR: cannot find unison binary
+    exit 3
+fi
+
 # ------------- Finding where I am -------------
 
 LOCAL=$(cd $(dirname $0); pwd)
@@ -127,50 +165,101 @@ fi
 
 # ------------- exclude file -------------
 
-if [ -e "$LOCAL/unison.ignore" ]
-then
-    while read i
-    do
-        EXCLUDE+=(-ignore "$i")
-    done < "$LOCAL/unison.ignore"
-    echo "Using exclude file $LOCAL/unison.ignore: ${EXCLUDE[@]}"
-else
-    echo "Not using any exclude file."
-fi
+EXCLUDE=()
+for FILE_NOW in "$LOCAL/unison.ignore" "$LOCAL/unison.$COMPUTER_REMOTE.ignore"
+do
+    if [ -e "$FILE_NOW" ]
+    then
+        file_ends_with_newline "$FILE_NOW" || {
+            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            exit 3
+        }
+        while read i
+        do
+            EXCLUDE+=(-ignore "$i")
+        done < "$FILE_NOW"
+        echo "Using exclude file $FILE_NOW: ${EXCLUDE[@]}"
+    else
+        echo "Not using exclude file $(basename $FILE_NOW)."
+    fi
+done
 
 # ------------- include file -------------
 
-if [ -e "$LOCAL/unison.ignorenot" ]
-then
-    while read i
-    do
-        INCLUDE+=(-ignorenot "$i")
-    done < "$LOCAL/unison.ignorenot"
-    echo "Using include file $LOCAL/unison.ignorenot: ${INCLUDE[@]}"
-else
-    echo "Not using any include file."
-fi
+INCLUDE=()
+for FILE_NOW in "$LOCAL/unison.ignorenot" "$LOCAL/unison.$COMPUTER_REMOTE.ignorenot"
+do
+    if [ -e "$FILE_NOW" ]
+    then
+        file_ends_with_newline "$FILE_NOW" || {
+            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            exit 3
+        }
+        while read i
+        do
+            INCLUDE+=(-ignorenot "$i")
+        done < "$FILE_NOW"
+        echo "Using include file $FILE_NOW: ${INCLUDE[@]}"
+    else
+        echo "Not using include file $(basename $FILE_NOW)."
+    fi
+done
 
 # ------------- argument file -------------
 
-if [ -e "$LOCAL/unison.arguments" ]
-then
-    while read i
-    do
-        FILE_FLAGS+=($i)
-    done < $LOCAL/unison.arguments
-    echo "Using arguments file $LOCAL/unison.arguments"
-else
-    echo "Not using any arguments file."
-fi
+FILE_FLAGS=()
+for FILE_NOW in "$LOCAL/unison.arguments" "$LOCAL/unison.$COMPUTER_REMOTE.arguments"
+do
+    if [ -e "$FILE_NOW" ]
+    then
+        file_ends_with_newline "$FILE_NOW" || {
+            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            exit 3
+        }
+        while read -r i
+        do
+            echo "Added to FILE_FLAGS the argument '$i'"
+            FILE_FLAGS+=("$i")
+        done <<< "$(xargs < "$FILE_NOW" printf '%s\n')"
+        echo "Using arguments file $FILE_NOW"
+    else
+        echo "Not using arguments file $(basename $FILE_NOW)."
+    fi
+done
 
 # ------------- more arguments in the command line -------------
 
 ADDITIONAL_FLAGS="$@"
 
+# ------------- debug -------------
+
+if [[ ! "${ADDITIONAL_FLAGS/-debug/}" == "$ADDITIONAL_FLAGS" ]]; then
+    UNISON="echo $UNISON"
+    ADDITIONAL_FLAGS="${ADDITIONAL_FLAGS/-debug/}"
+fi
+
 # ------------- dirs -------------
 
-if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "${ADDITIONAL_FLAGS}" ]]
+for ((i = 0 ; i < ${#FILE_FLAGS[@]} ; i++))
+do
+    echo "FILE_FLAGS1[$i]=${FILE_FLAGS[$i]}"
+done
+
+if [ ${#FILE_FLAGS[@]} -gt 0 ] && [[ ! "${FILE_FLAGS[@]//--remote-dir=/}" == "${FILE_FLAGS[@]}" ]]
+then
+    count=0
+    for ((i = 0 ; i < ${#FILE_FLAGS[@]} ; i++))
+    do
+        echo "FILE_FLAGS[$i]=${FILE_FLAGS[$i]}"
+        if [[ ! "${FILE_FLAGS[$i]//--remote-dir=/}" == "${FILE_FLAGS[$i]}" ]]
+        then
+            DIR_REMOTE="${FILE_FLAGS[$i]/--remote-dir=/}"
+            echo "DIR_REMOTE1=$DIR_REMOTE"
+            FILE_FLAGS[$i]=""
+            break
+        fi
+    done
+elif [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "${ADDITIONAL_FLAGS}" ]]
 then
     for i in $ADDITIONAL_FLAGS
     do
@@ -187,48 +276,12 @@ else
     DIR_REMOTE="${LOCAL/"/Users/$USER/"/"/Users/$USER_REMOTE/"}"
 fi
 
-# ------------- singularities -------------
+for ((i = 0 ; i < ${#FILE_FLAGS[@]} ; i++))
+do
+    echo "FILE_FLAGS2[$i]=${FILE_FLAGS[$i]}"
+done
 
-if [[ "${ADDITIONAL_FLAGS//--remote-dir=.*/}" == "$ADDITIONAL_FLAGS" ]]
-then
-    # translation origin
-    case "`hostname`" in
-        "tud14231"|"imac"|"csr-875717.csr.utexas.edu")
-            #inverse translation of Darwin homes
-            FROM="/Users/$USER"
-        ;;
-        "srv227" )
-            FROM="/home/nfs/$USER"
-        ;;
-        "login1"|"login2"|"login3")
-            FROM="/home1/00767/$USER"
-        ;;
-        * )
-            FROM="$HOME"
-        ;;
-    esac
-    # translation destiny
-    case "$COMPUTER_REMOTE" in
-        "jgte-mac.no-ip.org"|"csr-875717.csr.utexas.edu" )
-            #translation of Darwin homes
-            TO="/Users/$USER_REMOTE"
-            #adding non-default location of unison because of brew
-            DEFAULT_FLAGS+=(-servercmd /usr/local/bin/unison)
-        ;;
-        "linux-bastion.tudelft.nl" )
-            TO="/home/nfs/$USER_REMOTE"
-        ;;
-        "login1.ls5.tacc.utexas.edu"|"login2.ls5.tacc.utexas.edu"|"login3.ls5.tacc.utexas.edu")
-            TO="/home1/00767/$USER_REMOTE"
-        ;;
-        * )
-            TO="/home/$USER_REMOTE"
-        ;;
-    esac
-    #translate
-    DIR_REMOTE="${DIR_REMOTE/$FROM/$TO}"
-
-fi
+echo "DIR_REMOTE=$DIR_REMOTE"
 
 # ------------- remote location -------------
 
@@ -264,6 +317,7 @@ else
       NODELETIONDIR_FLAGS=
 fi
 
+# ------------- syncing -------------
 #need to fix freaky blank messing up the unison call below
 ADDITIONAL_FLAGS="$(echo $ADDITIONAL_FLAGS |  sed 's/ *$//' | sed 's/^ *//')"
 
@@ -275,27 +329,27 @@ ADDITIONAL_FLAGS="$(echo $ADDITIONAL_FLAGS |  sed 's/ *$//' | sed 's/^ *//')"
 #     [ "$ANSWER" == "n" ] || [ "$ANSWER" == "N" ] && exit 3
 # )
 
-# ------------- feedback -------------
+    [ ! -d "$LOCAL" ] && echo "ERROR: cannot find $LOCAL" && exit 3
+
+# ------------- simplemode -------------
 
 echo "====================================================================="
 echo "Default flags        : ${DEFAULT_FLAGS[@]}"
 echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
 echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
-echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
-echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
-echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
+echo "File ignore flags    : ${EXCLUDE[@]:-None}"
+echo "File ignorenot flags : ${INCLUDE[@]:-None}"
+echo "File flags           : ${FILE_FLAGS[@]:-None}"
 echo "ssh flags            : -sshargs $SSH_ARGS"
 echo "remote is            : $REMOTE"
 echo "local is             : $LOCAL"
 echo "====================================================================="
-
-# ------------- syncing -------------
-
-unison \
-    ${DEFAULT_FLAGS[@]} "${IGNORE_FLAGS[@]}" \
-    ${INCLUDE:+"${INCLUDE[@]}"} \
-    ${EXCLUDE:+"${EXCLUDE[@]}"} \
-    ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
+$UNISON \
+    ${DEFAULT_FLAGS[@]} \
+    "${IGNORE_FLAGS[@]}" \
+    "${EXCLUDE[@]:-}" \
+    ${INCLUDE[@]:-} \
+    ${FILE_FLAGS[@]:-} \
     $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
     -sshargs "$SSH_ARGS" \
     "$LOCAL" "$REMOTE" \
