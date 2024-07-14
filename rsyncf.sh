@@ -270,26 +270,32 @@ $DEFAULT_FLAGS
     computer-remote=*) #define the remote computer address
       COMPUTER_REMOTE=${arg/computer-remote=}
       DEFINED_ARGS+=(computer-remote)
+      $BE_VERBOSE && echo "updated DEFINED_ARGS because of argument '$arg'"
     ;;
     user-remote=*) #define the remote username
       USER_REMOTE=${arg/user-remote=}
       DEFINED_ARGS+=(user-remote)
+      $BE_VERBOSE && echo "updated DEFINED_ARGS because of argument '$arg'"
     ;;
     dir-remote=*) #define the remote directory, defaults to exactly the same directory as in the local computer
       DIR_REMOTE=${arg/dir-remote=}
       DEFINED_ARGS+=(dir-remote)
+      $BE_VERBOSE && echo "updated DEFINED_ARGS because of argument '$arg'"
     ;;
     pre-sync=*) #execute this command before rsync'ing
       PRE_SYNC=${arg/pre-sync=}
       DEFINED_ARGS+=(pre-sync)
+      $BE_VERBOSE && echo "updated DEFINED_ARGS because of argument '$arg'"
     ;;
     ssh-key=*) #define this ssh-key file, can also be defined in the remote list file; defaults to ~/.ssh/$USER_REMOTE@${COMPUTER_REMOTE%%.*}
       SSH_KEY_FILE=${arg/ssh-key=}
       DEFINED_ARGS+=(ssh-key)
+      $BE_VERBOSE && echo "updated DEFINED_ARGS because of argument '$arg'"
     ;;
     ssh-options=*) #pass ssh-options=STRING to -e 'ssh STRING'
       SSH_OPTIONS=${arg/ssh-options=}
       DEFINED_ARGS+=(ssh-options)
+      $BE_VERBOSE && echo "updated DEFINED_ARGS because of argument '$arg'"
     ;;
     # ------------------ ) #The arguments below may be defined in the 'arguments' section in the remote list file
     #NOTICE: the argument parsing below needs to be duplicated below, when parsing arguments defined in the remote list file
@@ -327,10 +333,12 @@ $DEFAULT_FLAGS
     ;;
     --no-exclude|--no-include|--no-arguments) #ignore this type of arguments defined in the remote list file
       DEFINED_ARGS+=(${arg/--no-})
+      $BE_VERBOSE && echo "updated DEFINED_ARGS because of argument '$arg'"
     ;;
     --no-exclude-file|--no-include-file|--no-arguments-file) #same as above, needed for compatibility with other rsync scripts
       T=${arg/--no-};T=${T/-file}
       DEFINED_ARGS+=($T)
+      $BE_VERBOSE && echo "updated DEFINED_ARGS because of argument '$arg'"
     ;;
     --no-*) #remove --<argument> from the default argument list and add it to the rsync call
       T=${arg/--no-}
@@ -453,6 +461,8 @@ do
   LOG=rsyncf.$remote.log
   LOG=${LOG// /_}
   MORE_FLAGS+=" --exclude=$LOG"
+
+  $BE_VERBOSE && echo "DEFINED_ARGS2=${DEFINED_ARGS[@]:-None}"
 
   #loop over all details and save them to the appropriate variables
   previous_key=
