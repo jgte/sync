@@ -370,18 +370,18 @@ else
     echo "Default flags        : ${DEFAULT_FLAGS[@]}"
     echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
     echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
-    echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
-    echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
-    echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
+    echo "File ignore flags    : ${EXCLUDE[@]:-None}"
+    echo "File ignorenot flags : ${INCLUDE[@]:-None}"
+    echo "File flags           : ${FILE_FLAGS[@]:-None}"
     echo "dir is               : $DIR"
     echo "local is             : $LOCAL"
     echo "====================================================================="
     $UNISON \
         ${DEFAULT_FLAGS[@]} \
         "${IGNORE_FLAGS[@]}" \
-        ${EXCLUDE:+"${EXCLUDE[@]}"} \
-        ${INCLUDE:+"${INCLUDE[@]}"} \
-        ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
+        "${EXCLUDE[@]:-}" \
+        ${INCLUDE[@]:-} \
+        ${FILE_FLAGS[@]:-} \
         $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
         "$DIR" "$LOCAL"
 
