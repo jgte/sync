@@ -820,7 +820,7 @@ do
   do
     $SHOW_FEEDBACK && echo "Synching ${SYNC_LOCATIONS[i]/ / -> }"
     $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
-      $MORE_FLAGS $ADDITIONAL_FLAGS $FILTER_FLAGS $DEFAULT_FLAGS \
+      $FILTER_FLAGS $DEFAULT_FLAGS $MORE_FLAGS $ADDITIONAL_FLAGS \
       $SSH_OPTIONS \
       ${SYNC_LOCATIONS[i]}
   done
