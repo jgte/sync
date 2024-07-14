@@ -224,9 +224,7 @@ then
             break
         fi
     done
-fi
-
-if [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "${ADDITIONAL_FLAGS}" ]]
+elif [[ ! "${ADDITIONAL_FLAGS//--remote-dir=/}" == "${ADDITIONAL_FLAGS}" ]]
 then
     for i in $ADDITIONAL_FLAGS
     do
