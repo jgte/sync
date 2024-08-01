@@ -687,7 +687,7 @@ do
     if ! is-included '--include=.git' $ADDITIONAL_FLAGS $MORE_FLAGS
     then
       echo "NOTICE: not ignoring .git, since the --delete flag was given."
-      MORE_FLAGS+=" --include=.git*"
+      FILTER_FLAGS+=" --include=.git*"
     fi
   fi
 
