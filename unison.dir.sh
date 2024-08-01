@@ -358,7 +358,7 @@ then
             ${EXCLUDE:+"${EXCLUDE[@]}"} \
             ${INCLUDE:+"${INCLUDE[@]}"} \
             ${FILE_FLAGS:+"${FILE_FLAGS[@]}"} \
-            $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS \
+            "$ADDITIONAL_FLAGS" $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS \
             "$HOME/$subdir" "$LOCAL/$subdir"  || exit $?
 
     done
