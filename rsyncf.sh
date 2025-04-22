@@ -183,7 +183,7 @@ DEFAULT_FLAGS+=" --exclude=nohup.out"
 DEFAULT_FLAGS+=" --exclude=screenlog.*"
 DEFAULT_FLAGS+=" --exclude=Thumbs.db"
 DEFAULT_FLAGS+=" --exclude=*to-delete*"
-
+DEFAULT_FLAGS+=" --exclude=.stfolder/"
 
 # #script-specific arguments
 # SCRIPT_ARGS="--not-dir2local --no-d2l --not-local2dir --no-l2d --not-local2remote --no-l2r --not-remote2local --no-r2l --no-confirmation --no-feedback --backup-deleted --no-default-flags --no-exclude-file --no-include-file --no-arguments-file --be-verbose"

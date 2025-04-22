@@ -129,6 +129,7 @@ IGNORE_FLAGS+=(-ignore 'Name Thumbs.db')
 IGNORE_FLAGS+=(-ignore 'Path *to-delete*')
 IGNORE_FLAGS+=(-ignore 'Path .dropbox*')
 IGNORE_FLAGS+=(-ignore 'Path .unison')
+IGNORE_FLAGS+=(-ignore 'Path .stfolder')
 
 # ------------- dir -------------
 
