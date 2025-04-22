@@ -32,6 +32,9 @@ function file_ends_with_newline() {
     # fi
 }
 
+# http://stackoverflow.com/questions/1527049/ddg#17841619
+function join-by(){ local IFS="$1"; shift; echo "$*"; }
+
 # ------------- unison executable -------------
 
 UNISON="$(which unison)"
@@ -373,12 +376,12 @@ else
     # ------------- simple mode -------------
 
     echo "====================================================================="
-    echo "Default flags        : ${DEFAULT_FLAGS[@]}"
-    echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
+    echo "Default flags        : $(join-by "|" "${DEFAULT_FLAGS[@]}")"
+    echo "Default ignore flags : $(join-by "|" "${IGNORE_FLAGS[@]}")"
     echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
-    echo "File ignore flags    : ${EXCLUDE[@]:-None}"
-    echo "File ignorenot flags : ${INCLUDE[@]:-None}"
-    echo "File flags           : ${FILE_FLAGS[@]:-None}"
+    echo "File ignore flags    : $(join-by "|" "${EXCLUDE[@]:-None}")"
+    echo "File ignorenot flags : $(join-by "|" "${INCLUDE[@]:-None}")"
+    echo "File flags           : $(join-by "|" "${FILE_FLAGS[@]:-None}")"
     echo "dir is               : $DIR"
     echo "local is             : $LOCAL"
     echo "====================================================================="
