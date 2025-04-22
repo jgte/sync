@@ -385,13 +385,23 @@ else
     echo "dir is               : $DIR"
     echo "local is             : $LOCAL"
     echo "====================================================================="
-    $UNISON \
-        ${DEFAULT_FLAGS[@]} \
-        "${IGNORE_FLAGS[@]}" \
-        "${EXCLUDE[@]:-}" \
-        ${INCLUDE[@]:-} \
-        ${FILE_FLAGS[@]:-} \
-        $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
-        "$DIR" "$LOCAL"
-
+    if [ -z "${FILE_FLAGS[@]:-}" ]
+    then
+        $UNISON \
+            ${DEFAULT_FLAGS[@]} \
+            "${IGNORE_FLAGS[@]}" \
+            "${EXCLUDE[@]:-}" \
+            ${INCLUDE[@]:-} \
+            $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
+            "$DIR" "$LOCAL"
+    else
+        $UNISON \
+            ${DEFAULT_FLAGS[@]} \
+            "${IGNORE_FLAGS[@]}" \
+            "${EXCLUDE[@]:-}" \
+            ${INCLUDE[@]:-} \
+            "${FILE_FLAGS[@]:-}" \
+            $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS \
+            "$DIR" "$LOCAL"
+    fi
 fi
