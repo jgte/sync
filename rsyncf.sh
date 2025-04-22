@@ -113,6 +113,10 @@ function is-included
   return 1
 }
 
+function echo-red(){
+  echo $'\e[91m'"$@"$'\e[0m'
+}
+
 
 # ------------- dynamic parameters -------------
 
@@ -430,9 +434,9 @@ do
     fi
   fi
 
-  $SHOW_FEEDBACK && echo "====================================================================="
-  $SHOW_FEEDBACK && echo $remote
-  $SHOW_FEEDBACK && echo "====================================================================="
+  $SHOW_FEEDBACK && echo-red "====================================================================="
+  $SHOW_FEEDBACK && echo-red $remote
+  $SHOW_FEEDBACK && echo-red "====================================================================="
 
   $BE_VERBOSE && echo -e "DETAILS:\n$DETAILS"
 
