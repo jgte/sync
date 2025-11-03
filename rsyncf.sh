@@ -467,7 +467,7 @@ do
   LOG=${LOG// /_}
   MORE_FLAGS+=" --exclude=$LOG"
 
-  $BE_VERBOSE && echo "DEFINED_ARGS2=${DEFINED_ARGS[@]:-None}"
+  $BE_VERBOSE && echo "DEFINED_ARGS2=${DEFINED_ARGS[@]:-None}" | tee -a $LOG
 
   #loop over all details and save them to the appropriate variables
   previous_key=
@@ -483,17 +483,17 @@ do
       #sanity: need to start with a key
       if [ -z "$previous_key" ]
       then
-        echo "ERROR: error parsing $REMOTE_LIST entry [$remote]"
+        echo "ERROR: error parsing $REMOTE_LIST entry [$remote]" | tee -a $LOG
         exit 3
       fi
       #if it is not, use the previous key
       key=$previous_key
       value="$line"
     fi
-    $BE_VERBOSE && echo "Parsing $key='$value'"
+    $BE_VERBOSE && echo "Parsing $key='$value'" | tee -a $LOG
     if is-included $key ${DEFINED_ARGS[@]:-}
     then
-      $SHOW_FEEDBACK && echo "Because of input arguments, ignoring value(s) for key $key: $value"
+      $SHOW_FEEDBACK && echo "Because of input arguments, ignoring value(s) for key $key: $value" | tee -a $LOG
     else
       #enforcing common variables
       for i in $COMMON_VARIABLES_LIST
@@ -501,7 +501,7 @@ do
         if [[ ! "${value/$i}" == "$value" ]]
         then
           value_new="${value/$i} $(echo "$COMMON_VARIABLES" | awk -F'=' '/'$i'=/ {printf("%s",$2);for (i=3; i<=NF; i++) printf("=%s",$i)}')"
-          $BE_VERBOSE && echo -e "Replace common variable '$i':\nold value: $value\nnew value: $value_new"
+          $BE_VERBOSE && echo -e "Replace common variable '$i':\nold value: $value\nnew value: $value_new" | tee -a $LOG
           value="$value_new"
         fi
       done
@@ -509,32 +509,32 @@ do
       case $key in
       computer-remote)
         COMPUTER_REMOTE=$value
-        $BE_VERBOSE && echo "Set COMPUTER_REMOTE='$value'"
+        $BE_VERBOSE && echo "Set COMPUTER_REMOTE='$value'" | tee -a $LOG
         DEFINED_ARGS+=($key)
       ;;
       user-remote)
         USER_REMOTE=$value
-        $BE_VERBOSE && echo "Set USER_REMOTE='$value'"
+        $BE_VERBOSE && echo "Set USER_REMOTE='$value'" | tee -a $LOG
         DEFINED_ARGS+=($key)
       ;;
       dir-remote)
         DIR_REMOTE=$value
-        $BE_VERBOSE && echo "Set DIR_REMOTE='$value'"
+        $BE_VERBOSE && echo "Set DIR_REMOTE='$value'" | tee -a $LOG
         DEFINED_ARGS+=($key)
       ;;
       pre-sync)
         PRE_SYNC="$value"
-        $BE_VERBOSE && echo "Set PRE_SYNC='$value'"
+        $BE_VERBOSE && echo "Set PRE_SYNC='$value'" | tee -a $LOG
         DEFINED_ARGS+=($key)
       ;;
       ssh-key)
         SSH_KEY_FILE="$value"
-        $BE_VERBOSE && echo "Set SSH_KEY_FILE='$value'"
+        $BE_VERBOSE && echo "Set SSH_KEY_FILE='$value'" | tee -a $LOG
         DEFINED_ARGS+=($key)
       ;;
       ssh-options)
         SSH_OPTIONS="$value"
-        $BE_VERBOSE && echo "Set SSH_OPTIONS='$value'"
+        $BE_VERBOSE && echo "Set SSH_OPTIONS='$value'" | tee -a $LOG
         DEFINED_ARGS+=($key)
       ;;
       exclude|include)
@@ -545,7 +545,7 @@ do
           do
             [ -z "$i" ] && continue
             FILTER_FLAGS+=" --$key=$i"
-            $BE_VERBOSE && echo "To FILTER_FLAGS, appended '--$key=$i'"
+            $BE_VERBOSE && echo "To FILTER_FLAGS, appended '--$key=$i'" | tee -a $LOG
           done
         else
           #NOTICE: keep names with blanks in one single line and use single quotes
@@ -558,7 +558,7 @@ do
             do
               [ -z "$i" ] && continue
               FILTER_FLAGS+=" --$key=${i//\\\*/*}"
-              $BE_VERBOSE && echo "To FILTER_FLAGS, appended '--$key=${i//\\\*/*}'"
+              $BE_VERBOSE && echo "To FILTER_FLAGS, appended '--$key=${i//\\\*/*}'" | tee -a $LOG
             done
           fi
         fi
@@ -590,7 +590,7 @@ do
               T=${i/--no-}
               DEFAULT_FLAGS=${DEFAULT_FLAGS/" --$T"}
               MORE_FLAGS+=" $i"
-              $BE_VERBOSE && echo "To MORE_FLAGS, removed --$T and appended '$i'"
+              $BE_VERBOSE && echo "To MORE_FLAGS, removed --$T and appended '$i'" | tee -a $LOG
             ;;
             echo|debug) #show which rsync commands would have been issues
               ECHO=echo
@@ -599,10 +599,10 @@ do
               T=${i/--}
               DEFAULT_FLAGS=${DEFAULT_FLAGS/" --no-$T"}
               MORE_FLAGS+=" $i"
-              $BE_VERBOSE && echo "To MORE_FLAGS, removed --no-$T and appended '$i'"
+              $BE_VERBOSE && echo "To MORE_FLAGS, removed --no-$T and appended '$i'" | tee -a $LOG
             ;;
             *)
-              echo "ERROR: cannot handle input argument from remotes file: '$i'"
+              echo "ERROR: cannot handle input argument from remotes file: '$i'" | tee -a $LOG
               exit 3
             ;;
           esac
@@ -623,8 +623,8 @@ do
   if is-included pre-sync ${DEFINED_ARGS[@]:-}
   then
     #execute the requested command
-    echo "executing pre-run command '$PRE_SYNC':"
-    $PRE_SYNC || exit $?
+    echo "executing pre-run command '$PRE_SYNC':" | tee -a $LOG
+    $PRE_SYNC | tee -a $LOG || exit $?
   fi
 
   # ------------- if remote dir is not given explicitly, defaul to user's home -------------
@@ -645,11 +645,11 @@ do
     SSH_KEY_FILE=$HOME/.ssh/$USER_REMOTE@${COMPUTER_REMOTE%%.*}
   fi
 
-  $BE_VERBOSE && echo "Looking for key file $SSH_KEY_FILE"
+  $BE_VERBOSE && echo "Looking for key file $SSH_KEY_FILE" | tee -a $LOG
   if [ ! -e "$SSH_KEY_FILE" ]
   then
     SSH_KEY_FILE=none
-    $BE_VERBOSE && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)."
+    $BE_VERBOSE && echo "Not using a keyfile (file $SSH_KEY_FILE does not exist)." | tee -a $LOG
   else
     [ -z "${SSH_AGENT_PID:-}" ] && eval $(ssh-agent -s)
     ssh-add $($BE_VERBOSE && echo "-vvv" || echo "-q") -t 60 $SSH_KEY_FILE
@@ -657,7 +657,7 @@ do
     then
       echo 'eval $(ssh-agent -s)'
       echo "ssh-add $($BE_VERBOSE && echo "-vvv" || echo "-q") -t 60 $SSH_KEY_FILE"
-    fi
+    fi | tee -a $LOG
   fi
 
   # ------------- ssh options -------------
@@ -673,7 +673,7 @@ do
   then
     if is-included '--include=.git' $ADDITIONAL_FLAGS $MORE_FLAGS
     then
-      echo "NOTICE: to sync .git, need the --delete flag, otherwise .git dirs are ignored."
+      echo "NOTICE: to sync .git, need the --delete flag, otherwise .git dirs are ignored." | tee -a $LOG
       #delete the --include=.git entry
       for i in $ADDITIONAL_FLAGS
       do
@@ -690,7 +690,7 @@ do
   else
     if ! is-included '--include=.git' $ADDITIONAL_FLAGS $MORE_FLAGS
     then
-      echo "NOTICE: not ignoring .git, since the --delete flag was given."
+      echo "NOTICE: not ignoring .git, since the --delete flag was given." | tee -a $LOG
       FILTER_FLAGS+=" --include=.git*"
     fi
   fi
@@ -719,7 +719,7 @@ do
     DATE=$(date "+%Y-%m-%d")
     if [ -z "$DATE" ]
     then
-      echo "BUG TRAP: could not build data string"
+      echo "BUG TRAP: could not build data string" | tee -a $LOG
       exit 3
     fi
     #NOTICE: do not include --delete here, the --backup-deleted flag only says that any deleted file is
@@ -759,29 +759,29 @@ do
         OTHER_LIST+=("$i")
       fi
     done
-    echo "ADDITIONAL_FLAGS  : $ADDITIONAL_FLAGS"
-    echo "MORE_FLAGS        : $MORE_FLAGS"
-    echo "FILTER_FLAGS      : $FILTER_FLAGS"
-    echo "DEFAULT_FLAGS     : $DEFAULT_FLAGS"
-    echo "Additional flags  : ${OTHER_LIST[@]:-}"
-    echo "Include list      : ${INCLUDE_LIST[@]:-}"
-    echo "Exclude list      : ${EXCLUDE_LIST[@]:-}"
-    echo "Remote address    : $COMPUTER_REMOTE"
-    echo "Remote dir        : $DIR_REMOTE"
-    echo "Local dir         : $DIR_SOURCE"
+    echo "ADDITIONAL_FLAGS  : $ADDITIONAL_FLAGS"    | tee -a $LOG
+    echo "MORE_FLAGS        : $MORE_FLAGS"          | tee -a $LOG
+    echo "FILTER_FLAGS      : $FILTER_FLAGS"        | tee -a $LOG
+    echo "DEFAULT_FLAGS     : $DEFAULT_FLAGS"       | tee -a $LOG
+    echo "Additional flags  : ${OTHER_LIST[@]:-}"   | tee -a $LOG
+    echo "Include list      : ${INCLUDE_LIST[@]:-}" | tee -a $LOG
+    echo "Exclude list      : ${EXCLUDE_LIST[@]:-}" | tee -a $LOG
+    echo "Remote address    : $COMPUTER_REMOTE"     | tee -a $LOG
+    echo "Remote dir        : $DIR_REMOTE"          | tee -a $LOG
+    echo "Local dir         : $DIR_SOURCE"          | tee -a $LOG
     if $LOCAL2REMOTE && $REMOTE2LOCAL
     then
-      echo "Bidirectional sync: local -> remote -> local"
+      echo "Bidirectional sync: local -> remote -> local" | tee -a $LOG
     elif $LOCAL2REMOTE
     then
-      echo "Directional sync  : local -> remote"
+      echo "Directional sync  : local -> remote" | tee -a $LOG
     elif $REMOTE2LOCAL
     then
-      echo "Directional sync  : remote -> local"
+      echo "Directional sync  : remote -> local" | tee -a $LOG
     else
-      echo "Directional sync  : none (pointless to have both --not-local2remote and --not-remote2local)"
+      echo "Directional sync  : none (pointless to have both --not-local2remote and --not-remote2local)" | tee -a $LOG
     fi
-    echo "====================================================================="
+    echo "=====================================================================" | tee -a $LOG
   else
     #at least show me the changes
     MORE_FLAGS="$MORE_FLAGS --itemize-changes"
@@ -823,7 +823,7 @@ do
 
   for ((i = 0 ; i < ${#SYNC_LOCATIONS[@]} ; i++))
   do
-    $SHOW_FEEDBACK && echo "Synching ${SYNC_LOCATIONS[i]/ / -> }"
+    $SHOW_FEEDBACK && echo "Synching ${SYNC_LOCATIONS[i]/ / -> }" | tee -a $LOG
     $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
       $FILTER_FLAGS $DEFAULT_FLAGS $MORE_FLAGS $ADDITIONAL_FLAGS \
       $SSH_OPTIONS \
@@ -835,13 +835,13 @@ do
   if [[ ! "${ADDITIONAL_FLAGS/--no-times}"  == "$ADDITIONAL_FLAGS" ]] \
   && [[   "${ADDITIONAL_FLAGS/--size-only}" == "$ADDITIONAL_FLAGS" ]]
   then
-    echo "NOTICE: you passed --no-times but without --size-only: you may not get what you expect."
+    echo "NOTICE: you passed --no-times but without --size-only: you may not get what you expect." | tee -a $LOG
   fi
 
   if [[   "${ADDITIONAL_FLAGS/--no-times}"  == "$ADDITIONAL_FLAGS" ]] \
   && [[ ! "${ADDITIONAL_FLAGS/--size-only}" == "$ADDITIONAL_FLAGS" ]]
   then
-    echo "NOTICE: you passed --size-only but without --no-times: you may not get what you expect."
+    echo "NOTICE: you passed --size-only but without --no-times: you may not get what you expect." | tee -a $LOG
   fi
 
 done
