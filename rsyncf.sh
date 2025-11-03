@@ -121,6 +121,12 @@ function echo-red(){
 # ------------- dynamic parameters -------------
 
 DIR_SOURCE=$PWD
+if which brew >& /dev/null
+then
+  RSYNC_COM=$(brew --prefix rsync)/bin/rsync
+else
+  RSYNC_COM=rsync
+fi
 
 # ------------- static parameters -------------
 
@@ -824,7 +830,7 @@ do
   for ((i = 0 ; i < ${#SYNC_LOCATIONS[@]} ; i++))
   do
     $SHOW_FEEDBACK && echo "Synching ${SYNC_LOCATIONS[i]/ / -> }" | tee -a $LOG
-    $ECHO rsync --log-file="$DIR_SOURCE/$LOG" \
+    $ECHO $RSYNC_COM --log-file="$DIR_SOURCE/$LOG" \
       $FILTER_FLAGS $DEFAULT_FLAGS $MORE_FLAGS $ADDITIONAL_FLAGS \
       $SSH_OPTIONS \
       ${SYNC_LOCATIONS[i]}
