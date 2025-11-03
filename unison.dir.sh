@@ -142,6 +142,13 @@ DIRNAME=${DIRNAME%.sh}
 DIR=${DIRNAME//\:/\/}
 DIR=$HOME/$DIR
 
+# ------------- log -------------
+
+LOG=unison.$DIRNAME.log
+LOG=${LOG// /_}
+DEFAULT_FLAGS+=(-log)
+DEFAULT_FLAGS+=(-logfile $LOG)
+
 # ------------- exclude file -------------
 
 EXCLUDE=()
@@ -150,16 +157,16 @@ do
     if [ -e "$FILE_NOW" ]
     then
         file_ends_with_newline "$FILE_NOW" || {
-            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            echo "ERROR: file $FILE_NOW needs to end with a newline." | tee -a $LOG
             exit 3
         }
         while read i
         do
             EXCLUDE+=(-ignore "$i")
         done < "$FILE_NOW"
-        echo "Using exclude file $FILE_NOW: ${EXCLUDE[@]}"
+        echo "Using exclude file $FILE_NOW: ${EXCLUDE[@]}" | tee -a $LOG
     else
-        echo "Not using exclude file $(basename $FILE_NOW)."
+        echo "Not using exclude file $(basename $FILE_NOW)." | tee -a $LOG
     fi
 done
 
@@ -171,16 +178,16 @@ do
     if [ -e "$FILE_NOW" ]
     then
         file_ends_with_newline "$FILE_NOW" || {
-            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            echo "ERROR: file $FILE_NOW needs to end with a newline." | tee -a $LOG
             exit 3
         }
         while read i
         do
             INCLUDE+=(-ignorenot "$i")
         done < "$FILE_NOW"
-        echo "Using include file $FILE_NOW: ${INCLUDE[@]}"
+        echo "Using include file $FILE_NOW: ${INCLUDE[@]}" | tee -a $LOG
     else
-        echo "Not using include file $(basename $FILE_NOW)."
+        echo "Not using include file $(basename $FILE_NOW)." | tee -a $LOG
     fi
 done
 
@@ -192,17 +199,17 @@ do
     if [ -e "$FILE_NOW" ]
     then
         file_ends_with_newline "$FILE_NOW" || {
-            echo "ERROR: file $FILE_NOW needs to end with a newline."
+            echo "ERROR: file $FILE_NOW needs to end with a newline." | tee -a $LOG
             exit 3
         }
         while read -r i
         do
-            echo "Added to FILE_FLAGS the argument '$i'"
+            echo "Added to FILE_FLAGS the argument '$i'" | tee -a $LOG
             FILE_FLAGS+=("$i")
         done <<< "$(xargs < "$FILE_NOW" printf '%s\n')"
-        echo "Using arguments file $FILE_NOW"
+        echo "Using arguments file $FILE_NOW" | tee -a $LOG
     else
-        echo "Not using arguments file $(basename $FILE_NOW)."
+        echo "Not using arguments file $(basename $FILE_NOW)." | tee -a $LOG
     fi
 done
 
@@ -224,11 +231,11 @@ then
     count=0
     for ((i = 0 ; i < ${#FILE_FLAGS[@]} ; i++))
     do
-        echo "FILE_FLAGS[$i]=${FILE_FLAGS[$i]}"
+        echo "FILE_FLAGS[$i]=${FILE_FLAGS[$i]}" | tee -a $LOG
         if [[ ! "${FILE_FLAGS[$i]//--remote-dir=/}" == "${FILE_FLAGS[$i]}" ]]
         then
             DIR="${FILE_FLAGS[$i]/--remote-dir=/}"
-            echo "DIR=$DIR"
+            echo "DIR=$DIR" | tee -a $LOG
             FILE_FLAGS[$i]=""
             break
         fi
@@ -287,12 +294,12 @@ then
 
     #get dir list
     [ "$(basename $DIR)" == "dir_list" ]  && DIR_LIST_FILE=$LOCAL/unison.dir_list
-    [ "$(basename $DIR)" == "recursive" ] && DIR_LIST_FILE=$(TMP=/tmp/unison.recursive.$RANDOM && find $LOCAL -type d -maxdepth 1 > $TMP 2>/dev/null && echo $TMP)
+    [ "$(basename $DIR)" == "recursive" ] && DIR_LIST_FILE=$(TMP=/tmp/unison.recursive.$RANDOM && find $LOCAL -type d -maxdepth 1 > $TMP 2>/dev/null && echo $TMP) | tee -a $LOG
 
     #sanity
     if [ ! -e "$DIR_LIST_FILE" ]
     then
-        echo "ERROR: need file with list of directories to sync: $DIR_LIST_FILE"
+        echo "ERROR: need file with list of directories to sync: $DIR_LIST_FILE" | tee -a $LOG
         exit 3
     fi
 
@@ -329,11 +336,11 @@ then
         #check for full comment lines
         [ -z "$line" ] && SKIP=true
         #check for non-existing directories
-        [ ! -d "$HOME/$subdir"  ] && echo "ERROR: cannot find $HOME/$subdir"  && SKIP=true
-        [ ! -d "$LOCAL/$subdir" ] && echo "ERROR: cannot find $LOCAL/$subdir" && SKIP=true
+        [ ! -d "$HOME/$subdir"  ] && echo "ERROR: cannot find $HOME/$subdir"  | tee -a $LOG && SKIP=true
+        [ ! -d "$LOCAL/$subdir" ] && echo "ERROR: cannot find $LOCAL/$subdir" | tee -a $LOG && SKIP=true
         #skip self-pointing dirs
-        [ ! -z "$(readlink  $HOME/$subdir)" ] && [ "$(cd $(readlink  $HOME/$subdir); pwd)" == "$(cd $LOCAL/$subdir; pwd)" ] && echo "ERROR: $HOME/$subdir  points to $LOCAL/$subdir" && SKIP=true
-        [ ! -z "$(readlink $LOCAL/$subdir)" ] && [ "$(cd $(readlink $LOCAL/$subdir); pwd)" == "$(cd  $HOME/$subdir; pwd)" ] && echo "ERROR: $LOCAL/$subdir points to  $HOME/$subdir" && SKIP=true
+        [ ! -z "$(readlink  $HOME/$subdir)" ] && [ "$(cd $(readlink  $HOME/$subdir); pwd)" == "$(cd $LOCAL/$subdir; pwd)" ] && echo "ERROR: $HOME/$subdir  points to $LOCAL/$subdir" | tee -a $LOG && SKIP=true
+        [ ! -z "$(readlink $LOCAL/$subdir)" ] && [ "$(cd $(readlink $LOCAL/$subdir); pwd)" == "$(cd  $HOME/$subdir; pwd)" ] && echo "ERROR: $LOCAL/$subdir points to  $HOME/$subdir" | tee -a $LOG && SKIP=true
 
         $SKIP && continue
 
@@ -342,20 +349,20 @@ then
         [ ! -z      "$FORCELOCAL_FLAGS" ] &&      FORCELOCAL_FLAGS="-force $LOCAL/$subdir"
         [ ! -z        "$FORCEDIR_FLAGS" ] &&        FORCEDIR_FLAGS="-force $HOME/$subdir"
         [ ! -z "$NODELETIONLOCAL_FLAGS" ] && NODELETIONLOCAL_FLAGS="-nodeletion $LOCAL/$subdir"
-        [ ! -z   "$NODELETIONDIR_FLAGS" ] &&   NODELETIONDIR_FLAGS="-nodeletion $HOME/$subdir" && echo "4:NODELETIONDIR_FLAGS=$NODELETIONDIR_FLAGS"
+        [ ! -z   "$NODELETIONDIR_FLAGS" ] &&   NODELETIONDIR_FLAGS="-nodeletion $HOME/$subdir" && echo "4:NODELETIONDIR_FLAGS=$NODELETIONDIR_FLAGS" | tee -a $LOG
 
         # ------------- batch mode -------------
 
-        echo "====================================================================="
-        echo "Default flags        : ${DEFAULT_FLAGS[@]} "
-        echo "Default ignore flags : ${IGNORE_FLAGS[@]}"
-        echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"
-        echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"
-        echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"
-        echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
-        echo "dir is               : $HOME/$subdir"
-        echo "local is             : $LOCAL/$subdir"
-        echo "====================================================================="
+        echo "====================================================================="  | tee -a $LOG
+        echo "Default flags        : ${DEFAULT_FLAGS[@]} "                            | tee -a $LOG
+        echo "Default ignore flags : ${IGNORE_FLAGS[@]}"                              | tee -a $LOG
+        echo "File ignore flags    : ${EXCLUDE:+"${EXCLUDE[@]}"}"                     | tee -a $LOG
+        echo "File ignorenot flags : ${INCLUDE:+"${INCLUDE[@]}"}"                     | tee -a $LOG
+        echo "File flags           : ${FILE_FLAGS:+"${FILE_FLAGS[@]}"}"               | tee -a $LOG
+        echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS" | tee -a $LOG
+        echo "dir is               : $HOME/$subdir"                                   | tee -a $LOG
+        echo "local is             : $LOCAL/$subdir"                                  | tee -a $LOG
+        echo "====================================================================="  | tee -a $LOG
         $UNISON \
             ${DEFAULT_FLAGS[@]} \
             "${IGNORE_FLAGS[@]}" \
@@ -369,22 +376,22 @@ then
 
 else
 
-    [ ! -d "$DIR"   ] && echo "ERROR: cannot find $DIR"
-    [ ! -d "$LOCAL" ] && echo "ERROR: cannot find $LOCAL"
+    [ ! -d "$DIR"   ] && echo "ERROR: cannot find $DIR"   | tee -a $LOG
+    [ ! -d "$LOCAL" ] && echo "ERROR: cannot find $LOCAL" | tee -a $LOG
     ( [ ! -d "$LOCAL" ] || [ ! -d "$DIR" ] ) && exit 3
 
     # ------------- simple mode -------------
 
-    echo "====================================================================="
-    echo "Default flags        : $(join-by "|" "${DEFAULT_FLAGS[@]}")"
-    echo "Default ignore flags : $(join-by "|" "${IGNORE_FLAGS[@]}")"
-    echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS"
-    echo "File ignore flags    : $(join-by "|" "${EXCLUDE[@]:-None}")"
-    echo "File ignorenot flags : $(join-by "|" "${INCLUDE[@]:-None}")"
-    echo "File flags           : $(join-by "|" "${FILE_FLAGS[@]:-None}")"
-    echo "dir is               : $DIR"
-    echo "local is             : $LOCAL"
-    echo "====================================================================="
+    echo "====================================================================="     | tee -a $LOG
+    echo "Default flags        : $(join-by "|" "${DEFAULT_FLAGS[@]}")"               | tee -a $LOG
+    echo "Default ignore flags : $(join-by "|" "${IGNORE_FLAGS[@]}")"                | tee -a $LOG
+    echo "Command-line flags   : $ADDITIONAL_FLAGS $FORCELOCAL_FLAGS $FORCEDIR_FLAGS $NODELETIONLOCAL_FLAGS $NODELETIONDIR_FLAGS" | tee -a $LOG
+    echo "File ignore flags    : $(join-by "|" "${EXCLUDE[@]:-None}")"               | tee -a $LOG
+    echo "File ignorenot flags : $(join-by "|" "${INCLUDE[@]:-None}")"               | tee -a $LOG
+    echo "File flags           : $(join-by "|" "${FILE_FLAGS[@]:-None}")"            | tee -a $LOG
+    echo "dir is               : $DIR"                                               | tee -a $LOG
+    echo "local is             : $LOCAL"                                             | tee -a $LOG
+    echo "====================================================================="     | tee -a $LOG
     if [ -z "${FILE_FLAGS[@]:-}" ]
     then
         $UNISON \
