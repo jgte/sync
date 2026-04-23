@@ -68,7 +68,7 @@ DEFAULT_FLAGS+=(-fastcheck true)
 # DEFAULT_FLAGS+=(-dontchmod)
 DEFAULT_FLAGS+=(-rsrc false)
 DEFAULT_FLAGS+=(-prefer newer)
-DEFAULT_FLAGS+=(-links false)
+DEFAULT_FLAGS+=(-links true)
 
 #default files to ignore
 IGNORE_FLAGS=()
