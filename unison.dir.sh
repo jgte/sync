@@ -392,7 +392,7 @@ else
     echo "dir is               : $DIR"                                               | tee -a $LOG
     echo "local is             : $LOCAL"                                             | tee -a $LOG
     echo "====================================================================="     | tee -a $LOG
-    if [ -z "${FILE_FLAGS[@]:-}" ]
+    if [ -z "$(join-by "|" "${FILE_FLAGS[@]:-}")" ]
     then
         $UNISON \
             ${DEFAULT_FLAGS[@]} \
