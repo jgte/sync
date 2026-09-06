@@ -469,9 +469,9 @@ do
     SSH_OPTIONS=
   fi
 
-  LOG=rsyncf.$remote.log
-  LOG=${LOG// /_}
-  MORE_FLAGS+=" --exclude=$LOG"
+  mkdir -p $DIR_SOURCE/rsyncf.log
+  LOG=$DIR_SOURCE/rsyncf.log/rsyncf.${remote// /_}.log
+  MORE_FLAGS+=" --exclude=rsyncf.log/"
 
   $BE_VERBOSE && echo "DEFINED_ARGS2=${DEFINED_ARGS[@]:-None}" | tee -a $LOG
 
