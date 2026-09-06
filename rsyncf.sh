@@ -830,7 +830,7 @@ do
   for ((i = 0 ; i < ${#SYNC_LOCATIONS[@]} ; i++))
   do
     $SHOW_FEEDBACK && echo "Synching ${SYNC_LOCATIONS[i]/ / -> }" | tee -a "$LOG"
-    $ECHO $RSYNC_COM --log-file="$DIR_SOURCE/$LOG" \
+    $ECHO $RSYNC_COM --log-file="$LOG" \
       $FILTER_FLAGS $DEFAULT_FLAGS $MORE_FLAGS $ADDITIONAL_FLAGS \
       $SSH_OPTIONS \
       ${SYNC_LOCATIONS[i]}
