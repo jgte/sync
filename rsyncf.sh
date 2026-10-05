@@ -210,7 +210,7 @@ SSH_KEY_FILE=
 SSH_OPTIONS=
 LOCAL2REMOTE=true
 REMOTE2LOCAL=true
-SHOW_FEEDBACK=true
+SHOW_FEEDBACK=false
 NO_CONFIRMATION=true
 BE_VERBOSE=false
 BACKUP_DELETED=false
@@ -788,9 +788,6 @@ do
       echo "Directional sync  : none (pointless to have both --not-local2remote and --not-remote2local)" | tee -a "$LOG"
     fi
     echo "=====================================================================" | tee -a "$LOG"
-  else
-    #at least show me the changes
-    MORE_FLAGS="$MORE_FLAGS --itemize-changes"
   fi
 
   # ------------- user in the loop? -------------
